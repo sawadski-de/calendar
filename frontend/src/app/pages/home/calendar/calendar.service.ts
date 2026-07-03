@@ -1,7 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
-import { Appointment } from './appointment.model';
+import { Appointment, AvailabilityStatus } from './appointment.model';
 
 export interface CreateAppointmentRequest {
   title: string;
@@ -13,6 +13,20 @@ export interface CreateAppointmentRequest {
 export interface PersonSummary {
   id: string;
   email: string;
+}
+
+export interface AttendeeSummary {
+  personId: string;
+  email: string;
+}
+
+export interface AppointmentDetail {
+  id: string;
+  title: string;
+  startUtc: string;
+  endUtc: string;
+  status: AvailabilityStatus;
+  attendees: AttendeeSummary[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -30,5 +44,9 @@ export class CalendarService {
 
   getPersons(): Observable<PersonSummary[]> {
     return this.http.get<PersonSummary[]>('/api/persons');
+  }
+
+  getAppointmentDetail(id: string): Observable<AppointmentDetail> {
+    return this.http.get<AppointmentDetail>(`/api/appointments/${id}`);
   }
 }

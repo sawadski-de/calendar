@@ -14,4 +14,14 @@ public interface IAppointmentViewService
         DateTimeOffset rangeStartUtc,
         DateTimeOffset rangeEndUtc,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns <c>null</c> when the appointment doesn't exist <em>or</em> isn't owned by
+    /// <paramref name="personId"/> — the two cases are indistinguishable to the caller (no existence
+    /// leak, Story 1.4).
+    /// </summary>
+    Task<Appointment?> GetOwnAppointmentByIdAsync(
+        Guid personId,
+        Guid appointmentId,
+        CancellationToken cancellationToken = default);
 }

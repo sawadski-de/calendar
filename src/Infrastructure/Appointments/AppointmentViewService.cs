@@ -20,4 +20,12 @@ public class AppointmentViewService(ApplicationDbContext dbContext) : IAppointme
             .OrderBy(a => a.StartUtc)
             .ToListAsync(cancellationToken);
     }
+
+    public Task<Appointment?> GetOwnAppointmentByIdAsync(
+        Guid personId,
+        Guid appointmentId,
+        CancellationToken cancellationToken = default) =>
+        dbContext.Appointments
+            .Include(a => a.Attendees)
+            .FirstOrDefaultAsync(a => a.Id == appointmentId && a.PersonId == personId, cancellationToken);
 }

@@ -64,4 +64,74 @@ describe('CalendarColumn', () => {
     // An adjacent, still-empty slot remains interactive.
     expect(slotAt(10)).not.toBeUndefined();
   });
+
+  describe('appointment activation (Story 1.4)', () => {
+    const appointment: Appointment = {
+      id: 'appt-1',
+      title: 'Standup',
+      startUtc: new Date(2026, 6, 6, 9, 0).toISOString(),
+      endUtc: new Date(2026, 6, 6, 9, 30).toISOString(),
+      status: 'Unterbrechbar',
+    };
+
+    function appointmentBlock(): HTMLElement {
+      return fixture.nativeElement.querySelector('.calendar-column__appointment');
+    }
+
+    it('emits appointmentActivated with the appointment id on click', () => {
+      fixture.componentRef.setInput('appointments', [appointment]);
+      fixture.detectChanges();
+
+      let emitted: string | undefined;
+      fixture.componentInstance.appointmentActivated.subscribe((id) => (emitted = id));
+
+      appointmentBlock().dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+      expect(emitted).toBe('appt-1');
+    });
+
+    it('emits appointmentActivated on Enter/Space for a focused appointment block', () => {
+      fixture.componentRef.setInput('appointments', [appointment]);
+      fixture.detectChanges();
+
+      let emitCount = 0;
+      fixture.componentInstance.appointmentActivated.subscribe(() => emitCount++);
+
+      const block = appointmentBlock();
+      block.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      block.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+
+      expect(emitCount).toBe(2);
+    });
+
+    it('clicking an appointment does not also emit slotActivated', () => {
+      fixture.componentRef.setInput('appointments', [appointment]);
+      fixture.detectChanges();
+
+      let slotEmitCount = 0;
+      let appointmentEmitCount = 0;
+      fixture.componentInstance.slotActivated.subscribe(() => slotEmitCount++);
+      fixture.componentInstance.appointmentActivated.subscribe(() => appointmentEmitCount++);
+
+      appointmentBlock().dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+      expect(appointmentEmitCount).toBe(1);
+      expect(slotEmitCount).toBe(0);
+    });
+
+    it('double-clicking an empty slot does not also emit appointmentActivated', () => {
+      fixture.componentRef.setInput('appointments', [appointment]);
+      fixture.detectChanges();
+
+      let slotEmitCount = 0;
+      let appointmentEmitCount = 0;
+      fixture.componentInstance.slotActivated.subscribe(() => slotEmitCount++);
+      fixture.componentInstance.appointmentActivated.subscribe(() => appointmentEmitCount++);
+
+      slotAt(14).dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+
+      expect(slotEmitCount).toBe(1);
+      expect(appointmentEmitCount).toBe(0);
+    });
+  });
 });

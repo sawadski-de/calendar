@@ -54,6 +54,11 @@ export function getMonthGridDays(date: Date): Date[] {
   return days;
 }
 
+/** Locale-formatted "HH:mm"-style time label, shared by the calendar grid and the detail popover. */
+export function formatTime(date: Date): string {
+  return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+}
+
 /** Groups appointments by the local calendar day their startUtc falls on. */
 export function groupByDay(appointments: Appointment[]): Map<string, Appointment[]> {
   const map = new Map<string, Appointment[]>();

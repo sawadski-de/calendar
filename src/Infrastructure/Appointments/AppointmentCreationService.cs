@@ -25,11 +25,14 @@ public class AppointmentCreationService(IPersonRepository personRepository, IApp
             return new AppointmentCreationResult(false, null, "invalid-time-range");
         }
 
+        // attendeePersonIds can arrive as null despite its non-nullable type — System.Text.Json binds a
+        // missing/explicit-null JSON property to null regardless of the C# annotation, and that used to
+        // crash Distinct() below with an unhandled 500 instead of a clean response.
         // A duplicate id in the request (double-submit, buggy client) must not reach AddAttendee twice —
         // the unique (AppointmentId, PersonId) index would turn that into an unhandled 500 instead of a
         // clean validation response. Distinct() here also lets attendee-existence be checked against a
         // single roster fetch instead of one DB round-trip per attendee.
-        var distinctAttendeePersonIds = attendeePersonIds.Distinct().ToList();
+        var distinctAttendeePersonIds = (attendeePersonIds ?? []).Distinct().ToList();
 
         var roster = await personRepository.GetAllAsync(cancellationToken);
         var rosterIds = roster.Select(p => p.Id).ToHashSet();

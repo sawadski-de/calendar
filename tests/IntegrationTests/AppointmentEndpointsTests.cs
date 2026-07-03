@@ -134,6 +134,28 @@ public class AppointmentEndpointsTests(PostgresContainerFixture postgres)
     }
 
     [Fact]
+    public async Task Post_with_a_missing_attendeePersonIds_field_creates_the_appointment_instead_of_500ing()
+    {
+        // Regression: System.Text.Json binds a missing JSON property to null regardless of the
+        // record's non-nullable C# type — attendeePersonIds must be treated as "no attendees", not crash.
+        var (factory, client, _) = await CreateAuthenticatedContextAsync();
+        using var f = factory;
+        using var c = client;
+
+        var start = new DateTimeOffset(2026, 7, 6, 9, 0, 0, TimeSpan.Zero);
+        var response = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            title = "No attendee field at all",
+            startUtc = start,
+            endUtc = start.AddMinutes(30),
+        });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(nameof(AvailabilityStatus.Unterbrechbar), body.GetProperty("status").GetString());
+    }
+
+    [Fact]
     public async Task Post_rejects_a_blank_title()
     {
         var (factory, client, _) = await CreateAuthenticatedContextAsync();
@@ -310,6 +332,123 @@ public class AppointmentEndpointsTests(PostgresContainerFixture postgres)
         var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var attendeeRowCount = await dbContext.Attendees.CountAsync(a => a.AppointmentId == appointmentId);
         Assert.Equal(1, attendeeRowCount);
+    }
+
+    [Fact]
+    public async Task Get_by_id_returns_full_detail_including_attendee_emails()
+    {
+        var (factory, client, _) = await CreateAuthenticatedContextAsync();
+        using var f = factory;
+        using var c = client;
+
+        var createAttendee = await client.PostAsJsonAsync("/api/admin/persons", new
+        {
+            email = $"detail-{Guid.NewGuid():N}@test.local",
+            password = "Member#12345",
+            role = "Member",
+        });
+        createAttendee.EnsureSuccessStatusCode();
+        var attendeeId = (await createAttendee.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+        var attendeeEmail = (await client.GetFromJsonAsync<JsonElement>("/api/persons"))
+            .EnumerateArray()
+            .First(p => p.GetProperty("id").GetGuid() == attendeeId)
+            .GetProperty("email")
+            .GetString();
+
+        var start = new DateTimeOffset(2026, 7, 6, 9, 0, 0, TimeSpan.Zero);
+        var createResponse = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            title = "Detail-Test",
+            startUtc = start,
+            endUtc = start.AddMinutes(30),
+            attendeePersonIds = new[] { attendeeId },
+        });
+        createResponse.EnsureSuccessStatusCode();
+        var appointmentId = (await createResponse.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+
+        var detail = await client.GetFromJsonAsync<JsonElement>($"/api/appointments/{appointmentId}");
+
+        Assert.Equal("Detail-Test", detail.GetProperty("title").GetString());
+        Assert.Equal(nameof(AvailabilityStatus.Unterbrechbar), detail.GetProperty("status").GetString());
+        var attendees = detail.GetProperty("attendees").EnumerateArray().ToArray();
+        Assert.Single(attendees);
+        Assert.Equal(attendeeEmail, attendees[0].GetProperty("email").GetString());
+    }
+
+    [Fact]
+    public async Task Get_by_id_returns_404_for_a_non_existent_appointment()
+    {
+        var (factory, client, _) = await CreateAuthenticatedContextAsync();
+        using var f = factory;
+        using var c = client;
+
+        var response = await client.GetAsync($"/api/appointments/{Guid.NewGuid()}");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("appointment-not-found", body.GetProperty("code").GetString());
+    }
+
+    [Fact]
+    public async Task Get_by_id_returns_404_for_another_persons_appointment()
+    {
+        // Same code/status as "doesn't exist" (Get_by_id_returns_404_for_a_non_existent_appointment) —
+        // no existence leak for an appointment the caller doesn't own.
+        var (factory, ownerClient, ownerId) = await CreateAuthenticatedContextAsync();
+        using var f = factory;
+        using var oc = ownerClient;
+
+        var start = DateTimeOffset.UtcNow;
+        await SeedAppointmentAsync(factory, ownerId, "Owner's appointment", start, start.AddMinutes(30));
+
+        Guid appointmentId;
+        using (var scope = factory.Services.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            appointmentId = await dbContext.Appointments.Where(a => a.PersonId == ownerId).Select(a => a.Id).SingleAsync();
+        }
+
+        var otherEmail = $"other-{Guid.NewGuid():N}@test.local";
+        var createOther = await ownerClient.PostAsJsonAsync("/api/admin/persons", new
+        {
+            email = otherEmail,
+            password = "Member#12345",
+            role = "Member",
+        });
+        createOther.EnsureSuccessStatusCode();
+
+        using var otherClient = factory.CreateHttpsClient();
+        var otherLogin = await otherClient.PostAsJsonAsync("/api/auth/login", new { email = otherEmail, password = "Member#12345" });
+        otherLogin.EnsureSuccessStatusCode();
+
+        var response = await otherClient.GetAsync($"/api/appointments/{appointmentId}");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("appointment-not-found", body.GetProperty("code").GetString());
+    }
+
+    [Fact]
+    public async Task Get_by_id_response_has_no_location_property()
+    {
+        var (factory, client, personId) = await CreateAuthenticatedContextAsync();
+        using var f = factory;
+        using var c = client;
+
+        var start = DateTimeOffset.UtcNow;
+        await SeedAppointmentAsync(factory, personId, "No location", start, start.AddMinutes(30));
+
+        Guid appointmentId;
+        using (var scope = factory.Services.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            appointmentId = await dbContext.Appointments.Where(a => a.PersonId == personId).Select(a => a.Id).SingleAsync();
+        }
+
+        var detail = await client.GetFromJsonAsync<JsonElement>($"/api/appointments/{appointmentId}");
+        var propertyNames = detail.EnumerateObject().Select(p => p.Name).ToArray();
+
+        Assert.DoesNotContain(propertyNames, name => name.Contains("location", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]

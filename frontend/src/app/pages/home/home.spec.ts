@@ -120,4 +120,58 @@ describe('Home', () => {
     expect(fixture.componentInstance.appointments().map((a) => a.id)).toEqual(['new-1']);
     httpMock.expectNone((r) => r.url === '/api/appointments' && r.method === 'GET');
   });
+
+  it('clicking a rendered appointment opens the detail popover with the right appointmentId (Story 1.4)', () => {
+    fixture.detectChanges();
+    httpMock.expectOne((r) => r.url === '/api/appointments').flush([
+      {
+        id: 'appt-1',
+        title: 'Standup',
+        startUtc: new Date().toISOString(),
+        endUtc: new Date().toISOString(),
+        status: 'Unterbrechbar',
+      },
+    ]);
+    fixture.detectChanges();
+
+    (fixture.nativeElement.querySelector('.calendar-column__appointment') as HTMLElement).click();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.detailAppointmentId()).toBe('appt-1');
+    httpMock.expectOne('/api/appointments/appt-1').flush({
+      id: 'appt-1',
+      title: 'Standup',
+      startUtc: new Date().toISOString(),
+      endUtc: new Date().toISOString(),
+      status: 'Unterbrechbar',
+      attendees: [],
+    });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.appointment-detail__panel')).not.toBeNull();
+  });
+
+  it("the detail popover's closed output closes it", () => {
+    fixture.detectChanges();
+    httpMock.expectOne((r) => r.url === '/api/appointments').flush([]);
+    fixture.detectChanges();
+
+    fixture.componentInstance.openDetail('appt-1');
+    fixture.detectChanges();
+    httpMock.expectOne('/api/appointments/appt-1').flush({
+      id: 'appt-1',
+      title: 'Standup',
+      startUtc: new Date().toISOString(),
+      endUtc: new Date().toISOString(),
+      status: 'Unterbrechbar',
+      attendees: [],
+    });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.appointment-detail__panel')).not.toBeNull();
+
+    fixture.componentInstance.onDetailClosed();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.appointment-detail__panel')).toBeNull();
+  });
 });

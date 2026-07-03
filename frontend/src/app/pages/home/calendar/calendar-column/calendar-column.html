@@ -5,11 +5,9 @@
         class="calendar-column__slot"
         [style.top.%]="slot.topPercent"
         [style.height.%]="slot.heightPercent"
-        tabindex="0"
-        role="button"
-        (dblclick)="activateSlot(slot)"
-        (keydown.enter)="activateSlot(slot)"
-        (keydown.space)="activateSlot(slot)"
+        appActivatable
+        activateOn="dblclick"
+        (activate)="activateSlot(slot)"
       ></div>
     }
   }
@@ -20,6 +18,8 @@
       [style.height.%]="block.heightPercent"
       [style.left.%]="block.leftPercent"
       [style.width.%]="block.widthPercent"
+      appActivatable
+      (activate)="activateAppointment(block.layout.appointment.id)"
     >
       <span class="calendar-column__title text-body">{{ block.layout.appointment.title }}</span>
       <span class="calendar-column__time text-caption">{{ block.timeLabel }}</span>

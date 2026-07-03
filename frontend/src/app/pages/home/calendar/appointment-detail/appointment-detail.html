@@ -1,0 +1,57 @@
+<div class="appointment-detail__backdrop" (click)="close()">
+  <div class="appointment-detail__panel" appFocusTrap (click)="$event.stopPropagation()" (keydown.escape)="close()">
+    @if (detail(); as detail) {
+      <div class="appointment-detail__head">
+        <span class="appointment-detail__title text-label">{{ detail.title }}</span>
+        <button
+          type="button"
+          class="appointment-detail__close"
+          (click)="close()"
+          [attr.aria-label]="'calendar.detailClose' | transloco"
+        >
+          ✕
+        </button>
+      </div>
+
+      <div class="appointment-detail__field">
+        <span class="text-label-caps">{{ 'calendar.detailFieldDate' | transloco }}</span>
+        <span class="appointment-detail__value text-body">{{ dateLabel() }}</span>
+      </div>
+
+      <div class="appointment-detail__field">
+        <span class="text-label-caps">{{ 'calendar.detailFieldTime' | transloco }}</span>
+        <span class="appointment-detail__value text-body">{{ timeRangeLabel() }}</span>
+      </div>
+
+      <div class="appointment-detail__field">
+        <span class="text-label-caps">{{ 'calendar.detailFieldStatus' | transloco }}</span>
+        <app-status-badge [status]="detail.status" />
+      </div>
+
+      <div class="appointment-detail__field">
+        <span class="text-label-caps">{{ 'calendar.detailFieldAttendees' | transloco }}</span>
+        @if (detail.attendees.length > 0) {
+          <ul class="appointment-detail__attendees">
+            @for (attendee of detail.attendees; track attendee.personId) {
+              <li class="appointment-detail__value text-body">{{ attendee.email }}</li>
+            }
+          </ul>
+        } @else {
+          <span class="appointment-detail__value text-body">{{ 'calendar.detailNoAttendees' | transloco }}</span>
+        }
+      </div>
+    } @else if (loadError()) {
+      <div class="appointment-detail__head">
+        <span class="appointment-detail__value text-body">{{ 'calendar.detailLoadError' | transloco }}</span>
+        <button
+          type="button"
+          class="appointment-detail__close"
+          (click)="close()"
+          [attr.aria-label]="'calendar.detailClose' | transloco"
+        >
+          ✕
+        </button>
+      </div>
+    }
+  </div>
+</div>
