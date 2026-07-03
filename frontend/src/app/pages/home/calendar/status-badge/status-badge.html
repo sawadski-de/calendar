@@ -1,0 +1,14 @@
+<span class="status-badge" [class.status-badge--dnd]="isDnd()" [class.status-badge--interruptible]="!isDnd()">
+  @if (isDnd()) {
+    <svg class="status-badge__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.8" />
+      <path d="M6.5 12H17.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+    </svg>
+  } @else {
+    <svg class="status-badge__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.8" />
+      <path d="M8.5 12.5L10.7 14.7L15.5 9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+  }
+  <span class="status-badge__label text-caption">{{ labelKey() | transloco }}</span>
+</span>

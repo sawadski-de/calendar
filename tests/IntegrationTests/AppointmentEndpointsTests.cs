@@ -111,6 +111,208 @@ public class AppointmentEndpointsTests(PostgresContainerFixture postgres)
     }
 
     [Fact]
+    public async Task Post_creates_a_native_appointment_with_computed_status()
+    {
+        var (factory, client, _) = await CreateAuthenticatedContextAsync();
+        using var f = factory;
+        using var c = client;
+
+        var start = new DateTimeOffset(2026, 7, 6, 9, 0, 0, TimeSpan.Zero);
+        var response = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            title = "Solo focus block",
+            startUtc = start,
+            endUtc = start.AddHours(2),
+            attendeePersonIds = Array.Empty<Guid>(),
+        });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Solo focus block", body.GetProperty("title").GetString());
+        // No attendees → always Unterbrechbar, regardless of the 2-hour duration.
+        Assert.Equal(nameof(AvailabilityStatus.Unterbrechbar), body.GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task Post_rejects_a_blank_title()
+    {
+        var (factory, client, _) = await CreateAuthenticatedContextAsync();
+        using var f = factory;
+        using var c = client;
+
+        var start = DateTimeOffset.UtcNow;
+        var response = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            title = "   ",
+            startUtc = start,
+            endUtc = start.AddMinutes(30),
+            attendeePersonIds = Array.Empty<Guid>(),
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("title-required", body.GetProperty("code").GetString());
+    }
+
+    [Fact]
+    public async Task Post_rejects_an_end_time_at_or_before_the_start_time()
+    {
+        var (factory, client, _) = await CreateAuthenticatedContextAsync();
+        using var f = factory;
+        using var c = client;
+
+        var start = DateTimeOffset.UtcNow;
+        var response = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            title = "Zero-length",
+            startUtc = start,
+            endUtc = start,
+            attendeePersonIds = Array.Empty<Guid>(),
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("invalid-time-range", body.GetProperty("code").GetString());
+    }
+
+    [Fact]
+    public async Task Post_rejects_a_non_existent_attendee()
+    {
+        var (factory, client, _) = await CreateAuthenticatedContextAsync();
+        using var f = factory;
+        using var c = client;
+
+        var start = DateTimeOffset.UtcNow;
+        var response = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            title = "With ghost attendee",
+            startUtc = start,
+            endUtc = start.AddMinutes(30),
+            attendeePersonIds = new[] { Guid.NewGuid() },
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("attendee-not-found", body.GetProperty("code").GetString());
+    }
+
+    [Fact]
+    public async Task Post_creates_an_appointment_with_valid_attendees_and_persists_them()
+    {
+        var (factory, client, _) = await CreateAuthenticatedContextAsync();
+        using var f = factory;
+        using var c = client;
+
+        var createPerson = await client.PostAsJsonAsync("/api/admin/persons", new
+        {
+            email = $"attendee-{Guid.NewGuid():N}@test.local",
+            password = "Member#12345",
+            role = "Member",
+        });
+        createPerson.EnsureSuccessStatusCode();
+        var attendeeId = (await createPerson.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+
+        var start = new DateTimeOffset(2026, 7, 6, 9, 0, 0, TimeSpan.Zero);
+        var response = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            title = "Kurzabstimmung",
+            startUtc = start,
+            endUtc = start.AddMinutes(30),
+            attendeePersonIds = new[] { attendeeId },
+        });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var appointmentId = body.GetProperty("id").GetGuid();
+
+        using var scope = factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var attendeeCount = await dbContext.Attendees.CountAsync(a => a.AppointmentId == appointmentId && a.PersonId == attendeeId);
+        Assert.Equal(1, attendeeCount);
+    }
+
+    [Fact]
+    public async Task Get_response_includes_status()
+    {
+        var (factory, client, personId) = await CreateAuthenticatedContextAsync();
+        using var f = factory;
+        using var c = client;
+
+        var day = new DateTimeOffset(2026, 7, 6, 0, 0, 0, TimeSpan.Zero);
+        await SeedAppointmentAsync(factory, personId, "Standup", day.AddHours(9), day.AddHours(9.5));
+
+        var response = await client.GetFromJsonAsync<JsonElement>(
+            $"/api/appointments?from={Uri.EscapeDataString(day.ToString("O"))}&to={Uri.EscapeDataString(day.AddDays(1).ToString("O"))}");
+
+        var first = response.EnumerateArray().First();
+        Assert.Equal(nameof(AvailabilityStatus.Unterbrechbar), first.GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task A_row_relying_on_the_status_column_default_reads_back_as_a_valid_enum_value()
+    {
+        // Regression: the AddAppointmentStatusAndAttendees migration's ADD COLUMN must backfill
+        // pre-existing rows with a valid AvailabilityStatus member (not an empty string, which the
+        // HasConversion<string>() enum mapping cannot parse on the next read).
+        var (factory, client, personId) = await CreateAuthenticatedContextAsync();
+        using var f = factory;
+        using var c = client;
+
+        var appointmentId = Guid.NewGuid();
+        var day = new DateTimeOffset(2026, 7, 6, 9, 0, 0, TimeSpan.Zero);
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            // Omits is_all_day/status entirely so the row relies on the column defaults, simulating a
+            // pre-existing row backfilled by the migration rather than written through EF's mapping.
+            await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                $"INSERT INTO appointments (id, person_id, title, start_utc, end_utc) VALUES ({appointmentId}, {personId}, {"Legacy"}, {day}, {day.AddMinutes(30)})");
+        }
+
+        var response = await client.GetFromJsonAsync<JsonElement>(
+            $"/api/appointments?from={Uri.EscapeDataString(day.ToString("O"))}&to={Uri.EscapeDataString(day.AddDays(1).ToString("O"))}");
+
+        var entry = response.EnumerateArray().Single();
+        Assert.Equal(nameof(AvailabilityStatus.Unterbrechbar), entry.GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task Post_deduplicates_a_repeated_attendee_id_instead_of_erroring()
+    {
+        var (factory, client, _) = await CreateAuthenticatedContextAsync();
+        using var f = factory;
+        using var c = client;
+
+        var createPerson = await client.PostAsJsonAsync("/api/admin/persons", new
+        {
+            email = $"dup-{Guid.NewGuid():N}@test.local",
+            password = "Member#12345",
+            role = "Member",
+        });
+        createPerson.EnsureSuccessStatusCode();
+        var attendeeId = (await createPerson.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+
+        var start = new DateTimeOffset(2026, 7, 6, 9, 0, 0, TimeSpan.Zero);
+        var response = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            title = "Repeated attendee",
+            startUtc = start,
+            endUtc = start.AddMinutes(30),
+            attendeePersonIds = new[] { attendeeId, attendeeId },
+        });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var appointmentId = body.GetProperty("id").GetGuid();
+
+        using var scope = factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var attendeeRowCount = await dbContext.Attendees.CountAsync(a => a.AppointmentId == appointmentId);
+        Assert.Equal(1, attendeeRowCount);
+    }
+
+    [Fact]
     public async Task Two_native_appointments_for_the_same_person_can_coexist_under_the_partial_unique_index()
     {
         // AD-7: Provider/ProviderEventId are both NULL for native appointments — the partial index

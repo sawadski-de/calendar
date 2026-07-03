@@ -20,7 +20,22 @@
     "previous": "Zurück",
     "next": "Weiter",
     "today": "Heute",
-    "empty": "Du hast noch keine Termine."
+    "empty": "Du hast noch keine Termine.",
+    "createButton": "+ Neuer Termin",
+    "createHeading": "Neuer Termin",
+    "createFieldTitle": "Titel",
+    "createFieldDate": "Datum",
+    "createFieldStart": "Startzeit",
+    "createFieldDuration": "Dauer",
+    "createFieldEnd": "Ende",
+    "createFieldAttendees": "Teilnehmer (optional)",
+    "createTitleRequired": "Bitte gib einen Titel ein.",
+    "createInvalidTimeRange": "Die Endzeit muss nach der Startzeit liegen.",
+    "createCancel": "Abbrechen",
+    "createSave": "Speichern",
+    "addAttendee": "+ Teilnehmer hinzufügen",
+    "statusInterruptible": "Unterbrechbar",
+    "statusDnd": "Bitte nicht stören"
   },
   "languageSwitcher": {
     "groupLabel": "Sprache",

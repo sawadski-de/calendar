@@ -24,8 +24,33 @@ public static class AppointmentEndpoints
             var personId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var appointments = await appointmentViewService.GetOwnAppointmentsAsync(personId, from, to, cancellationToken);
 
-            var response = appointments.Select(a => new AppointmentResponse(a.Id, a.Title, a.StartUtc, a.EndUtc));
+            var response = appointments.Select(a => new AppointmentResponse(a.Id, a.Title, a.StartUtc, a.EndUtc, a.Status));
             return Results.Ok(response);
+        }).RequireAuthorization();
+
+        app.MapPost("/api/appointments", async (
+            CreateAppointmentRequest request,
+            ClaimsPrincipal user,
+            IAppointmentCreationService appointmentCreationService,
+            CancellationToken cancellationToken) =>
+        {
+            var personId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var result = await appointmentCreationService.CreateNativeAppointmentAsync(
+                personId,
+                request.Title,
+                request.StartUtc,
+                request.EndUtc,
+                request.AttendeePersonIds,
+                cancellationToken);
+
+            if (!result.Succeeded)
+            {
+                return ProblemResults.Problem(StatusCodes.Status400BadRequest, result.ErrorCode!, "Could not create appointment.");
+            }
+
+            var appointment = result.Appointment!;
+            var response = new AppointmentResponse(appointment.Id, appointment.Title, appointment.StartUtc, appointment.EndUtc, appointment.Status);
+            return Results.Created($"/api/appointments/{appointment.Id}", response);
         }).RequireAuthorization();
     }
 }

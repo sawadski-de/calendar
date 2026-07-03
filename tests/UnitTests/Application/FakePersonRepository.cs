@@ -22,6 +22,9 @@ public class FakePersonRepository : IPersonRepository
     public Task<Person?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         Task.FromResult(_people.GetValueOrDefault(id));
 
+    public Task<IReadOnlyList<Person>> GetAllAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<Person>>(_people.Values.ToList());
+
     public Task<int> CountAdminsAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult(_people.Values.Count(p => p.Role == PersonRole.Admin));
 

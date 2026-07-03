@@ -1,0 +1,43 @@
+<div class="attendee-picker">
+  <div class="attendee-picker__chips">
+    @for (person of selectedPeople(); track person.id) {
+      <span class="attendee-picker__chip">
+        {{ person.email }}
+        <button
+          type="button"
+          class="attendee-picker__remove"
+          (click)="removeAttendee(person.id)"
+          [attr.aria-label]="person.email"
+        >
+          ×
+        </button>
+      </span>
+    }
+
+    @if (!dropdownOpen()) {
+      <button type="button" class="attendee-picker__add" (click)="openDropdown()">
+        {{ 'calendar.addAttendee' | transloco }}
+      </button>
+    } @else {
+      <div class="attendee-picker__dropdown">
+        <input
+          type="text"
+          class="attendee-picker__filter"
+          [value]="filterText()"
+          (input)="filterText.set($any($event.target).value)"
+          (keydown.escape)="closeDropdown()"
+          autocomplete="off"
+        />
+        <ul class="attendee-picker__results">
+          @for (person of filteredAvailable(); track person.id) {
+            <li>
+              <button type="button" class="attendee-picker__result" (click)="addAttendee(person.id)">
+                {{ person.email }}
+              </button>
+            </li>
+          }
+        </ul>
+      </div>
+    }
+  </div>
+</div>

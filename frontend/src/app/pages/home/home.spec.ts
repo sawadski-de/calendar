@@ -38,7 +38,13 @@ describe('Home', () => {
 
     const req = httpMock.expectOne((r) => r.url === '/api/appointments');
     req.flush([
-      { id: '1', title: 'Standup', startUtc: new Date().toISOString(), endUtc: new Date().toISOString() },
+      {
+        id: '1',
+        title: 'Standup',
+        startUtc: new Date().toISOString(),
+        endUtc: new Date().toISOString(),
+        status: 'Unterbrechbar',
+      },
     ]);
     fixture.detectChanges();
 
@@ -81,5 +87,37 @@ describe('Home', () => {
 
     httpMock.expectNone((r) => r.url === '/api/appointments');
     expect(fixture.componentInstance.viewType()).toBe('month');
+  });
+
+  it('"+ Neuer Termin" opens the create form blank (AC 2)', () => {
+    fixture.detectChanges();
+    httpMock.expectOne((r) => r.url === '/api/appointments').flush([]);
+    fixture.detectChanges();
+
+    (fixture.nativeElement.querySelector('.calendar-toolbar__create') as HTMLElement).click();
+    fixture.detectChanges();
+    httpMock.expectOne((r) => r.url === '/api/persons').flush([]);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.appointment-create__panel')).not.toBeNull();
+    expect(fixture.componentInstance.createFormPrefillStart()).toBeNull();
+  });
+
+  it('appends a newly created appointment locally without refetching the whole month (AC 3)', () => {
+    fixture.detectChanges();
+    httpMock.expectOne((r) => r.url === '/api/appointments').flush([]);
+    fixture.detectChanges();
+
+    fixture.componentInstance.onAppointmentSaved({
+      id: 'new-1',
+      title: 'Kurzabstimmung',
+      startUtc: new Date().toISOString(),
+      endUtc: new Date().toISOString(),
+      status: 'Unterbrechbar',
+    });
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.appointments().map((a) => a.id)).toEqual(['new-1']);
+    httpMock.expectNone((r) => r.url === '/api/appointments' && r.method === 'GET');
   });
 });

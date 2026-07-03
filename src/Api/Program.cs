@@ -86,6 +86,8 @@ builder.Services.AddScoped<IPersonRepository, PersonRepository>();
 builder.Services.AddScoped<IAccountProvisioningService, IdentityAccountProvisioningService>();
 builder.Services.AddScoped<RoleChangeService>();
 builder.Services.AddScoped<IAppointmentViewService, AppointmentViewService>();
+builder.Services.AddScoped<IAppointmentRepository, AppointmentRepository>();
+builder.Services.AddScoped<IAppointmentCreationService, AppointmentCreationService>();
 
 builder.Services.AddExceptionHandler<ProblemDetailsExceptionHandler>();
 builder.Services.AddProblemDetails(options =>
@@ -139,6 +141,7 @@ app.MapGet("/api/health", () => Results.Ok(new { status = "healthy" }));
 app.MapAuthEndpoints();
 app.MapAdminEndpoints();
 app.MapAppointmentEndpoints();
+app.MapPersonEndpoints();
 
 app.Run();
 

@@ -6,6 +6,9 @@ public interface IPersonRepository
 {
     Task<Person?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
+    /// <summary>Full team roster — used by the attendee picker (Story 1.3) and attendee-id validation.</summary>
+    Task<IReadOnlyList<Person>> GetAllAsync(CancellationToken cancellationToken = default);
+
     Task<int> CountAdminsAsync(CancellationToken cancellationToken = default);
 
     Task AddAsync(Person person, CancellationToken cancellationToken = default);

@@ -3,6 +3,18 @@ import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { Appointment } from './appointment.model';
 
+export interface CreateAppointmentRequest {
+  title: string;
+  startUtc: string;
+  endUtc: string;
+  attendeePersonIds: string[];
+}
+
+export interface PersonSummary {
+  id: string;
+  email: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class CalendarService {
   private readonly http = inject(HttpClient);
@@ -10,5 +22,13 @@ export class CalendarService {
   getAppointments(fromUtc: Date, toUtc: Date): Observable<Appointment[]> {
     const params = new HttpParams().set('from', fromUtc.toISOString()).set('to', toUtc.toISOString());
     return this.http.get<Appointment[]>('/api/appointments', { params });
+  }
+
+  createAppointment(request: CreateAppointmentRequest): Observable<Appointment> {
+    return this.http.post<Appointment>('/api/appointments', request);
+  }
+
+  getPersons(): Observable<PersonSummary[]> {
+    return this.http.get<PersonSummary[]>('/api/persons');
   }
 }

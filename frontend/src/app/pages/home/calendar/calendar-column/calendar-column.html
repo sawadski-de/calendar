@@ -1,4 +1,18 @@
 <div class="calendar-column" [style.height.px]="totalHeightPx">
+  @for (slot of slots(); track slot.index) {
+    @if (!slot.occupied) {
+      <div
+        class="calendar-column__slot"
+        [style.top.%]="slot.topPercent"
+        [style.height.%]="slot.heightPercent"
+        tabindex="0"
+        role="button"
+        (dblclick)="activateSlot(slot)"
+        (keydown.enter)="activateSlot(slot)"
+        (keydown.space)="activateSlot(slot)"
+      ></div>
+    }
+  }
   @for (block of positioned(); track block.layout.appointment.id) {
     <div
       class="calendar-column__appointment"
@@ -9,6 +23,7 @@
     >
       <span class="calendar-column__title text-body">{{ block.layout.appointment.title }}</span>
       <span class="calendar-column__time text-caption">{{ block.timeLabel }}</span>
+      <app-status-badge [status]="block.layout.appointment.status" />
     </div>
   }
 </div>

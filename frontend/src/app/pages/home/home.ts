@@ -4,6 +4,7 @@ import { TranslocoPipe } from '@jsverse/transloco';
 import { AuthService } from '../../core/auth/auth.service';
 import { LanguageSwitcher } from '../../shared/language-switcher/language-switcher';
 import { CalendarViewType, ViewSwitcher } from '../../shared/view-switcher/view-switcher';
+import { AppointmentCreate } from './calendar/appointment-create/appointment-create';
 import { Appointment } from './calendar/appointment.model';
 import { CalendarColumn } from './calendar/calendar-column/calendar-column';
 import { CalendarService } from './calendar/calendar.service';
@@ -15,7 +16,7 @@ const HOUR_LABELS = Array.from({ length: 24 }, (_, hour) => hour);
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [TranslocoPipe, LanguageSwitcher, ViewSwitcher, CalendarColumn, MonthView],
+  imports: [TranslocoPipe, LanguageSwitcher, ViewSwitcher, CalendarColumn, MonthView, AppointmentCreate],
   templateUrl: './home.html',
   styleUrl: './home.css',
 })
@@ -36,6 +37,9 @@ export class Home implements OnInit {
   readonly isEmpty = computed(() => !this.loading() && this.appointments().length === 0);
 
   private readonly appointmentsByDay = computed(() => groupByDay(this.appointments()));
+
+  readonly createFormOpen = signal(false);
+  readonly createFormPrefillStart = signal<Date | null>(null);
 
   private loadedMonthKey: string | null = null;
 
@@ -71,6 +75,27 @@ export class Home implements OnInit {
 
   appointmentsFor(date: Date): Appointment[] {
     return this.appointmentsByDay().get(dateKey(date)) ?? [];
+  }
+
+  openCreateBlank(): void {
+    this.createFormPrefillStart.set(null);
+    this.createFormOpen.set(true);
+  }
+
+  openCreateFromSlot(start: Date): void {
+    this.createFormPrefillStart.set(start);
+    this.createFormOpen.set(true);
+  }
+
+  onAppointmentSaved(appointment: Appointment): void {
+    // Insert locally rather than refetching the whole month — the appointment must appear
+    // immediately (AC 3) without an extra round-trip.
+    this.appointments.update((list) => [...list, appointment]);
+    this.createFormOpen.set(false);
+  }
+
+  onAppointmentCreateCancelled(): void {
+    this.createFormOpen.set(false);
   }
 
   private moveFocusDate(direction: 1 | -1): void {

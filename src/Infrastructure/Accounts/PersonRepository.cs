@@ -11,6 +11,9 @@ public class PersonRepository(ApplicationDbContext dbContext) : IPersonRepositor
     public Task<Person?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         dbContext.People.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
 
+    public async Task<IReadOnlyList<Person>> GetAllAsync(CancellationToken cancellationToken = default) =>
+        await dbContext.People.ToListAsync(cancellationToken);
+
     public Task<int> CountAdminsAsync(CancellationToken cancellationToken = default) =>
         dbContext.People.CountAsync(p => p.Role == PersonRole.Admin, cancellationToken);
 
