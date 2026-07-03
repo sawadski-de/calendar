@@ -1,0 +1,14 @@
+<div class="calendar-column" [style.height.px]="totalHeightPx">
+  @for (block of positioned(); track block.layout.appointment.id) {
+    <div
+      class="calendar-column__appointment"
+      [style.top.%]="block.topPercent"
+      [style.height.%]="block.heightPercent"
+      [style.left.%]="block.leftPercent"
+      [style.width.%]="block.widthPercent"
+    >
+      <span class="calendar-column__title text-body">{{ block.layout.appointment.title }}</span>
+      <span class="calendar-column__time text-caption">{{ block.timeLabel }}</span>
+    </div>
+  }
+</div>

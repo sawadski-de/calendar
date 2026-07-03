@@ -1,0 +1,13 @@
+<div class="month-view">
+  @for (cell of cells(); track cell.date.getTime()) {
+    <div class="month-view__cell" [class.month-view__cell--outside]="!cell.isCurrentMonth">
+      <span class="month-view__day-number text-caption">{{ cell.dayNumber }}</span>
+      @for (appointment of cell.appointments.slice(0, maxTitlesPerCell); track appointment.id) {
+        <span class="month-view__title text-caption">{{ appointment.title }}</span>
+      }
+      @if (cell.appointments.length > maxTitlesPerCell) {
+        <span class="month-view__more text-caption">+{{ cell.appointments.length - maxTitlesPerCell }}</span>
+      }
+    </div>
+  }
+</div>

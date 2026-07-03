@@ -1,0 +1,19 @@
+# .NET
+bin/
+obj/
+*.user
+
+# Node / Angular
+node_modules/
+dist/
+
+# Local secrets (never commit real credentials — see deploy/.env.example)
+deploy/.env
+.env
+
+# IDE
+.vs/
+.idea/
+
+# Claude Code local/machine-specific state (not meant to be shared)
+.claude/scheduled_tasks.lock

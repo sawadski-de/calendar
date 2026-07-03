@@ -1,0 +1,4 @@
+## Deferred from: code review of story-1-1-projekt-grundgeruest-anmeldung-sprache (2026-07-03)
+
+- No CSRF defense-in-depth beyond `SameSite=Lax` (e.g. a double-submit token or custom-header check) on state-mutating admin endpoints (`POST /api/admin/persons`, `PUT /api/admin/persons/{id}/role`). `SameSite=Lax` (AD-10) already blocks the primary cross-site POST/PUT vector, and no AC requires more — revisit once the admin-facing write surface grows beyond account provisioning/role changes.
+- `Cookie.SecurePolicy = CookieSecurePolicy.Always` only actually works today because browsers treat `localhost` as a secure context — `deploy/Caddyfile` has no TLS configured (plain `:80`), so on any real non-localhost host the Secure cookie would never be set/sent and login would silently fail. Deferred by explicit user decision: no real domain exists yet for this prototype; resolve when a deployment/TLS story is scheduled, not by scope-creeping Story 1.1.

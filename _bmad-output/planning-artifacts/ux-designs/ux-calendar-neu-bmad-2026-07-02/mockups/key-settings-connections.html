@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>TeamKalender — Einstellungen: Kalenderverbindungen</title>
+<style>
+/*
+  KEY SCREEN 2 — Einstellungen > Kalenderverbindungen
+  ====================================================
+  Governed by:
+   - DESIGN.md: Colors ("reuse colors.dnd for sync-failure/error states,
+     never introduce a separate alarm color"), Typography, Shapes,
+     Components > "Sync-timestamp indicator" (components.sync-indicator),
+     Components > "Appointment-create-entry" (ghost-pill style reused
+     for action buttons).
+   - EXPERIENCE.md: Information Architecture > "Settings → Calendar
+     connections" (simple list, one row per provider, connected/
+     not-connected, "Verbinden" button, last-sync timestamp, error
+     indicator); Voice and Tone (exact microcopy for error state);
+     State Patterns > "Calendar-connection error (consent denied /
+     blocked by tenant admin)".
+   - .memlog.md decision: per-user connection UI is a simple list,
+     reached later via Settings, never a forced onboarding step.
+
+  All hex/radius/spacing values below are copied verbatim from DESIGN.md.
+*/
+:root{
+  --bg:#12151A; --surface:#1A1E24; --surface-2:#20242B;
+  --text:#E7EAEE; --muted:#8B95A1; --border:#2B3038;
+  --accent:#4FD1C5; --accent-on:#0A1F1E;
+  --interruptible:#59C2C0; --interruptible-fill:rgba(89,194,192,0.12); --interruptible-text:#A9E4E2;
+  --dnd:#C2685F; --dnd-fill:rgba(194,104,95,0.12); --dnd-text:#E7B7B0;
+  --r-sm:8px; --r-md:12px; --r-lg:16px; --r-full:9999px;
+  --sp1:4px; --sp2:8px; --sp3:12px; --sp4:16px; --sp5:20px; --sp6:24px; --sp7:28px; --sp8:36px;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;background:#0B0D10;font-family:"IBM Plex Sans",-apple-system,"Segoe UI",Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased;}
+body{padding:40px 20px;display:flex;justify-content:center;}
+.browser-frame{width:100%;max-width:1180px;background:var(--bg);border-radius:var(--r-lg);border:1px solid var(--border);box-shadow:0 24px 60px -20px rgba(6,8,11,0.55),0 4px 14px rgba(6,8,11,0.3);overflow:hidden;height:fit-content;}
+.browser-chrome{display:flex;align-items:center;gap:14px;padding:12px 16px;background:var(--surface-2);border-bottom:1px solid var(--border);}
+.chrome-dots{display:flex;gap:6px;}
+.chrome-dots span{width:10px;height:10px;border-radius:50%;background:#3A404A;}
+.chrome-dots span:nth-child(1){background:#55474A;}
+.chrome-dots span:nth-child(2){background:#57544A;}
+.chrome-dots span:nth-child(3){background:#3E5150;}
+.chrome-url{flex:1;max-width:320px;margin:0 auto;text-align:center;background:var(--bg);border:1px solid var(--border);border-radius:var(--r-full);padding:5px 14px;font-size:12px;color:var(--muted);}
+.app{padding:22px 28px 40px;background:var(--bg);}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:22px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-lg);padding:12px 16px;}
+.wordmark{display:flex;align-items:center;gap:9px;font-size:16.5px;font-weight:700;color:var(--text);letter-spacing:-0.01em;}
+.wordmark .mark{width:26px;height:26px;border-radius:var(--r-sm);background:linear-gradient(155deg,var(--interruptible),#2f7f7e);display:flex;align-items:center;justify-content:center;}
+.wordmark .mark svg{width:14px;height:14px;}
+.topbar-right{display:flex;align-items:center;gap:12px;}
+.lang-switch,.mode-toggle{font-size:13px;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:var(--r-full);padding:6px 12px;display:flex;align-items:center;gap:6px;font-weight:600;}
+.mode-toggle{padding:6px 9px;color:var(--accent);border-color:rgba(79,209,197,0.4);background:rgba(79,209,197,0.08);}
+.mode-toggle svg{width:15px;height:15px;}
+
+.crumb{font-size:11px;color:var(--muted);margin-bottom:6px;}
+.crumb strong{color:var(--muted);font-weight:600;}
+.page-heading{font-size:20px;font-weight:700;letter-spacing:-0.01em;color:var(--text);margin-bottom:8px;}
+.page-sub{font-size:12.5px;color:var(--muted);line-height:1.55;max-width:64ch;margin-bottom:28px;}
+
+.connections{display:flex;flex-direction:column;gap:var(--sp4);}
+.conn-row{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:var(--sp5) var(--sp6);}
+.conn-row.has-error{border-color:rgba(194,104,95,0.4);}
+.conn-top{display:flex;align-items:center;justify-content:space-between;gap:var(--sp4);margin-bottom:var(--sp3);}
+.conn-id{display:flex;align-items:center;gap:var(--sp3);}
+.provider-icon{width:38px;height:38px;border-radius:var(--r-md);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex:none;}
+.provider-icon.outlook{background:#20364A;color:#7EB3E0;}
+.provider-icon.google{background:#2B2A20;color:#E0C77E;}
+.provider-name{font-size:13.5px;font-weight:700;color:var(--text);}
+.provider-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+
+.status-tag{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;padding:5px 12px;border-radius:var(--r-full);}
+.status-tag.ok{background:rgba(79,209,197,0.08);border:1px solid rgba(79,209,197,0.35);color:var(--accent);}
+.status-tag.err{background:var(--dnd-fill);border:1px solid var(--dnd);color:var(--dnd-text);}
+
+.sync-line{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);margin-bottom:var(--sp4);}
+.sync-line svg{width:11px;height:11px;opacity:0.8;}
+.sync-line.err{color:var(--dnd);}
+.sync-line.err svg{opacity:1;}
+
+.conn-actions{display:flex;gap:var(--sp2);}
+.ghost-btn{border:1px solid var(--border);background:transparent;color:var(--muted);border-radius:var(--r-full);font-size:12px;font-weight:600;padding:7px 16px;font-family:inherit;}
+.ghost-btn.danger{color:var(--dnd-text);border-color:rgba(194,104,95,0.4);}
+.ghost-btn.primary{color:var(--accent-on);background:var(--accent);border-color:var(--accent);}
+
+.error-box{display:flex;gap:10px;align-items:flex-start;background:var(--dnd-fill);border-left:3px solid var(--dnd);border-radius:var(--r-md);padding:var(--sp4);margin-bottom:var(--sp4);}
+.error-box svg{width:15px;height:15px;flex:none;margin-top:1px;color:var(--dnd);}
+.error-box p{margin:0;font-size:12px;line-height:1.55;color:var(--dnd-text);}
+.error-box p strong{color:var(--dnd-text);}
+</style>
+</head>
+<body>
+
+<div class="browser-frame">
+  <div class="browser-chrome">
+    <div class="chrome-dots"><span></span><span></span><span></span></div>
+    <div class="chrome-url">kalender.intern.firma.de/einstellungen</div>
+  </div>
+
+  <div class="app">
+    <div class="topbar">
+      <div class="wordmark">
+        <span class="mark"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="16" rx="3" stroke="#0A1F1E" stroke-width="1.6"/><path d="M3 10H21" stroke="#0A1F1E" stroke-width="1.6"/><path d="M8 3V6.5" stroke="#0A1F1E" stroke-width="1.6" stroke-linecap="round"/><path d="M16 3V6.5" stroke="#0A1F1E" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+        TeamKalender
+      </div>
+      <div class="topbar-right">
+        <div class="lang-switch">DE ▾</div>
+        <div class="mode-toggle"><svg viewBox="0 0 24 24" fill="none"><path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a7 7 0 0 0 11 11Z" stroke="#4FD1C5" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+      </div>
+    </div>
+
+    <div class="crumb"><strong>Einstellungen</strong> · Kalenderverbindungen</div>
+    <div class="page-heading">Kalenderverbindungen</div>
+    <div class="page-sub">Verbinde deinen Outlook- oder Google-Kalender, damit deine Termine automatisch importiert werden. Die Synchronisierung läuft alle paar Minuten in eine Richtung — es wird nichts in dein Konto zurückgeschrieben.</div>
+
+    <div class="connections">
+
+      <!-- Outlook: connected, happy path -->
+      <div class="conn-row">
+        <div class="conn-top">
+          <div class="conn-id">
+            <span class="provider-icon outlook">O</span>
+            <div>
+              <div class="provider-name">Outlook</div>
+              <div class="provider-sub">dennis.sawadski@firma.de</div>
+            </div>
+          </div>
+          <span class="status-tag ok"><svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Verbunden</span>
+        </div>
+        <div class="sync-line">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M4 12a8 8 0 0 1 13.66-5.66M20 12a8 8 0 0 1-13.66 5.66" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M17 4v3.4h-3.4M7 20v-3.4h3.4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Zuletzt synchronisiert vor 3 Min.
+        </div>
+        <div class="conn-actions">
+          <button class="ghost-btn">Konto verwalten</button>
+          <button class="ghost-btn danger">Verbindung trennen</button>
+        </div>
+      </div>
+
+      <!-- Google: consent-denial / tenant-blocked error state -->
+      <div class="conn-row has-error">
+        <div class="conn-top">
+          <div class="conn-id">
+            <span class="provider-icon google">G</span>
+            <div>
+              <div class="provider-name">Google</div>
+              <div class="provider-sub">Nicht verbunden</div>
+            </div>
+          </div>
+          <span class="status-tag err"><svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M12 8v5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><circle cx="12" cy="16.3" r="1" fill="currentColor"/><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.8"/></svg>Verbindungsfehler</span>
+        </div>
+        <div class="sync-line err">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M4 12a8 8 0 0 1 13.66-5.66M20 12a8 8 0 0 1-13.66 5.66" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M17 4v3.4h-3.4M7 20v-3.4h3.4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Kein erfolgreicher Sync bisher
+        </div>
+        <div class="error-box">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12 8v5" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="16.3" r="1" fill="currentColor"/><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/></svg>
+          <p><strong>Verbindung von deinem Unternehmen blockiert</strong> — bitte den IT-Admin kontaktieren. Dein Google-Arbeitsbereich verhindert die Zustimmung zu dieser App.</p>
+        </div>
+        <div class="conn-actions">
+          <button class="ghost-btn primary">Erneut versuchen</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

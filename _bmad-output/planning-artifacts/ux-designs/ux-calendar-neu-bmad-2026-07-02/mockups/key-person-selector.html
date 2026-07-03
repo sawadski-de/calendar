@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>TeamKalender — Personenauswahl (Dropdown geöffnet)</title>
+<style>
+/*
+  KEY SCREEN — Person-selector, expanded dropdown state
+  ====================================================
+  Governed by:
+   - DESIGN.md: Components > "Person selector" (components.person-selector
+     — avatar chips: chipBg surface-2, chipBorder border, chipText text,
+     chipRadius full; trailing "+" chip: addChipBg transparent,
+     addChipBorder border-interactive, addChipText muted, and in its
+     open/active state addChipActiveBg accent / addChipActiveText
+     accent-on; dropdown: dropdownBg surface-2, dropdownBorder border,
+     dropdownRadius md, dropdownItemHoverBg surface, dropdownItemRadius
+     sm); Do's/Don'ts ("Let the person-selector's avatar-chip row scroll
+     horizontally for any number of selected teammates — don't cap or
+     truncate").
+   - EXPERIENCE.md: Component Patterns > "Person selector (avatar chips +
+     '+' dropdown)" — clicking "+" opens a searchable dropdown; typing
+     filters the roster in real time; arrow keys move focus through
+     filtered results; Enter adds the focused person and keeps the
+     dropdown open; Esc/outside-click closes it and returns focus to the
+     "+" chip. Interaction Primitives > "Open the person-selector
+     dropdown". Accessibility Floor > "Keyboard operability" and "Focus
+     trap and restore on close" (dropdown must be Tab-reachable, arrow-key
+     navigable, Esc-closable, with focus trapped while open and restored
+     to the "+" chip on close) — the highlighted row below represents
+     that arrow-key focus position. State Patterns > "No teammates
+     selected" confirms there is no hard cap on selections.
+
+  All hex/radius/spacing values below are copied verbatim from DESIGN.md.
+*/
+:root{
+  --bg:#12151A; --surface:#1A1E24; --surface-2:#20242B;
+  --text:#E7EAEE; --muted:#8B95A1; --border:#2B3038; --border-interactive:#647079;
+  --accent:#4FD1C5; --accent-on:#0A1F1E;
+  --interruptible:#59C2C0; --interruptible-fill:rgba(89,194,192,0.12); --interruptible-text:#A9E4E2;
+  --dnd:#C2685F; --dnd-fill:rgba(194,104,95,0.12); --dnd-text:#E7B7B0;
+  --r-sm:8px; --r-md:12px; --r-lg:16px; --r-full:9999px;
+  --sp1:4px; --sp2:8px; --sp3:12px; --sp4:16px; --sp5:20px; --sp6:24px; --sp7:28px; --sp8:36px;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;background:#0B0D10;font-family:"IBM Plex Sans",-apple-system,"Segoe UI",Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased;}
+body{padding:40px 20px;display:flex;justify-content:center;}
+.browser-frame{width:100%;max-width:1180px;background:var(--bg);border-radius:var(--r-lg);border:1px solid var(--border);box-shadow:0 24px 60px -20px rgba(6,8,11,0.55),0 4px 14px rgba(6,8,11,0.3);overflow:visible;height:fit-content;}
+.browser-chrome{display:flex;align-items:center;gap:14px;padding:12px 16px;background:var(--surface-2);border-bottom:1px solid var(--border);border-radius:var(--r-lg) var(--r-lg) 0 0;}
+.chrome-dots{display:flex;gap:6px;}
+.chrome-dots span{width:10px;height:10px;border-radius:50%;background:#3A404A;}
+.chrome-dots span:nth-child(1){background:#55474A;}
+.chrome-dots span:nth-child(2){background:#57544A;}
+.chrome-dots span:nth-child(3){background:#3E5150;}
+.chrome-url{flex:1;max-width:320px;margin:0 auto;text-align:center;background:var(--bg);border:1px solid var(--border);border-radius:var(--r-full);padding:5px 14px;font-size:12px;color:var(--muted);}
+.app{padding:22px 28px 60px;background:var(--bg);border-radius:0 0 var(--r-lg) var(--r-lg);}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:22px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-lg);padding:12px 16px;}
+.wordmark{display:flex;align-items:center;gap:9px;font-size:16.5px;font-weight:700;color:var(--text);letter-spacing:-0.01em;}
+.wordmark .mark{width:26px;height:26px;border-radius:var(--r-sm);background:linear-gradient(155deg,#59C2C0,#2f7f7e);display:flex;align-items:center;justify-content:center;}
+.wordmark .mark svg{width:14px;height:14px;}
+.topbar-right{display:flex;align-items:center;gap:12px;}
+.view-switcher{display:flex;background:var(--bg);border:1px solid var(--border);border-radius:var(--r-full);padding:4px;gap:2px;}
+.view-switcher button{border:none;background:transparent;font-family:inherit;font-size:13px;font-weight:600;padding:7px 16px;border-radius:var(--r-full);color:var(--muted);}
+.view-switcher button.active{background:var(--accent);color:var(--accent-on);box-shadow:0 3px 10px -3px rgba(79,209,197,0.55);}
+.lang-switch,.mode-toggle{font-size:13px;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:var(--r-full);padding:6px 12px;display:flex;align-items:center;gap:6px;font-weight:600;}
+.mode-toggle{padding:6px 9px;color:var(--accent);border-color:rgba(79,209,197,0.4);background:rgba(79,209,197,0.08);}
+.mode-toggle svg{width:15px;height:15px;}
+
+.subheader{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:14px;position:relative;z-index:10;}
+.date-heading{font-size:20px;font-weight:700;letter-spacing:-0.01em;color:var(--text);}
+
+.person-selector{display:flex;align-items:center;gap:8px;position:relative;}
+.chip-scroll{display:flex;align-items:center;gap:8px;overflow-x:auto;max-width:520px;padding:2px;}
+.avatar-chip{display:flex;align-items:center;gap:8px;flex:none;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-full);padding:5px 12px 5px 5px;font-size:12.5px;font-weight:600;color:var(--text);}
+.avatar-dot{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:700;color:#0F1216;flex:none;}
+.chip-remove{color:var(--muted);font-size:12px;margin-left:2px;}
+
+/* "+" chip: border-interactive resting state; solid accent fill while the dropdown is open/active */
+.add-chip{flex:none;border:1px solid var(--border-interactive);background:transparent;color:var(--muted);border-radius:var(--r-full);font-size:12.5px;font-weight:700;padding:7px 14px;font-family:inherit;}
+.add-chip.active{border-color:var(--accent);background:var(--accent);color:var(--accent-on);box-shadow:0 3px 10px -3px rgba(79,209,197,0.55);}
+
+/* ---- searchable dropdown ---- */
+.ps-dropdown{position:absolute;top:calc(100% + 10px);right:0;width:300px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-md);box-shadow:0 18px 40px -12px rgba(6,8,11,0.6);padding:var(--sp3);z-index:50;}
+.ps-search{display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--border-interactive);border-radius:var(--r-sm);padding:8px 10px;margin-bottom:var(--sp3);}
+.ps-search svg{width:14px;height:14px;color:var(--muted);flex:none;}
+.ps-search input{border:none;background:transparent;outline:none;color:var(--text);font-family:inherit;font-size:12.5px;width:100%;}
+.ps-search input::placeholder{color:var(--muted);}
+
+.ps-list{display:flex;flex-direction:column;gap:2px;max-height:280px;overflow-y:auto;}
+.ps-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 8px;border-radius:var(--r-sm);}
+.ps-row:hover{background:var(--surface);}
+.ps-row.focused{background:var(--surface);box-shadow:0 0 0 2px var(--accent) inset;}
+.ps-person{display:flex;align-items:center;gap:9px;font-size:12.5px;font-weight:600;color:var(--text);}
+.ps-avatar{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:700;color:#0F1216;flex:none;}
+.ps-role{display:block;font-size:10px;font-weight:500;color:var(--muted);margin-top:1px;}
+.ps-add-icon{color:var(--muted);font-size:14px;font-weight:700;flex:none;}
+.ps-row.focused .ps-add-icon,.ps-row:hover .ps-add-icon{color:var(--accent);}
+
+.ps-hint{margin-top:var(--sp2);padding-top:var(--sp2);border-top:1px solid var(--border);font-size:10.5px;color:var(--muted);line-height:1.5;}
+
+/* ---- context: minimal calendar header row underneath, grounding the control ---- */
+.context-note{font-size:11.5px;color:var(--muted);margin-bottom:var(--sp3);}
+.context-note strong{color:var(--text);}
+.calendar-wrap{border:1px solid var(--border);border-radius:var(--r-lg);background:var(--surface);overflow:hidden;}
+.calendar-grid{display:grid;grid-template-columns:64px repeat(3,1fr);}
+.col-header{padding:14px 14px 12px;border-bottom:1px solid var(--border);border-left:1px solid var(--border);min-height:70px;}
+.col-header.time-col-header{border-left:none;}
+.person-name{font-size:13px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:7px;margin-bottom:6px;}
+.person-name .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);}
+.sync-line{font-size:10.5px;color:var(--muted);}
+.grid-body{display:grid;grid-template-columns:64px repeat(3,1fr);height:120px;}
+.time-gutter{border-right:none;}
+.time-slot{height:60px;font-size:10.5px;color:var(--muted);padding:4px 10px 0 0;text-align:right;}
+.day-col{position:relative;border-left:1px solid var(--border);}
+.status-block{position:absolute;left:6px;right:6px;top:8px;height:48px;border-radius:var(--r-md);display:flex;align-items:center;gap:7px;padding:0 10px;font-size:11px;font-weight:600;border-left:3px solid transparent;}
+.status-block.teal{background:var(--interruptible-fill);border-left-color:var(--interruptible);color:var(--interruptible-text);}
+.status-block.rose{background:var(--dnd-fill);border-left-color:var(--dnd);color:var(--dnd-text);}
+</style>
+</head>
+<body>
+
+<div class="browser-frame">
+  <div class="browser-chrome">
+    <div class="chrome-dots"><span></span><span></span><span></span></div>
+    <div class="chrome-url">kalender.intern.firma.de</div>
+  </div>
+
+  <div class="app">
+    <div class="topbar">
+      <div class="wordmark">
+        <span class="mark"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="16" rx="3" stroke="#0A1F1E" stroke-width="1.6"/><path d="M3 10H21" stroke="#0A1F1E" stroke-width="1.6"/><path d="M8 3V6.5" stroke="#0A1F1E" stroke-width="1.6" stroke-linecap="round"/><path d="M16 3V6.5" stroke="#0A1F1E" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+        TeamKalender
+      </div>
+      <div class="topbar-right">
+        <div class="view-switcher">
+          <button>Monat</button>
+          <button class="active">Woche</button>
+          <button>Tag</button>
+        </div>
+        <div class="lang-switch">DE ▾</div>
+        <div class="mode-toggle"><svg viewBox="0 0 24 24" fill="none"><path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a7 7 0 0 0 11 11Z" stroke="#4FD1C5" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+      </div>
+    </div>
+
+    <div class="subheader">
+      <div class="date-heading">Donnerstag, 2. Juli 2026</div>
+
+      <div class="person-selector">
+        <div class="chip-scroll">
+          <span class="avatar-chip"><span class="avatar-dot" style="background:#C9A48A;">BO</span>Björn Ostermann<span class="chip-remove">×</span></span>
+          <span class="avatar-chip"><span class="avatar-dot" style="background:#8FA3B8;">KV</span>Katharina Vogel<span class="chip-remove">×</span></span>
+        </div>
+        <button class="add-chip active">+</button>
+
+        <!-- Dropdown: open state, search-as-you-type, arrow-key nav implied -->
+        <div class="ps-dropdown">
+          <div class="ps-search">
+            <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.8"/><path d="M20 20l-4.3-4.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            <input type="text" placeholder="Teammitglied suchen …">
+          </div>
+          <div class="ps-list">
+            <div class="ps-row focused">
+              <div class="ps-person"><span class="ps-avatar" style="background:#D8A8B8;">MF</span>Mara Feldmann</div>
+              <span class="ps-add-icon">+</span>
+            </div>
+            <div class="ps-row">
+              <div class="ps-person"><span class="ps-avatar" style="background:#9FB89A;">JK</span>Jonas Keller</div>
+              <span class="ps-add-icon">+</span>
+            </div>
+            <div class="ps-row">
+              <div class="ps-person"><span class="ps-avatar" style="background:#C7B08F;">LB</span>Lena Brandt</div>
+              <span class="ps-add-icon">+</span>
+            </div>
+            <div class="ps-row">
+              <div class="ps-person"><span class="ps-avatar" style="background:#A8B8D8;">SC</span>Sofia Cimino</div>
+              <span class="ps-add-icon">+</span>
+            </div>
+            <div class="ps-row">
+              <div class="ps-person"><span class="ps-avatar" style="background:#D8C0A8;">TR</span>Tobias Reuter</div>
+              <span class="ps-add-icon">+</span>
+            </div>
+            <div class="ps-row">
+              <div class="ps-person"><span class="ps-avatar" style="background:#B7C4CF;">DW</span>Dennis Weber<span class="ps-role">Admin</span></div>
+              <span class="ps-add-icon">+</span>
+            </div>
+          </div>
+          <div class="ps-hint">Kein Limit — füge so viele Teammitglieder hinzu, wie du brauchst. Der Chip-Reihe scrollt horizontal.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="context-note">Ausgewählte Spalten erscheinen sofort nebeneinander — <strong>Björn</strong> und <strong>Katharina</strong> sind bereits Teil der Ansicht.</div>
+
+    <div class="calendar-wrap">
+      <div class="calendar-grid">
+        <div class="col-header time-col-header"></div>
+        <div class="col-header">
+          <div class="person-name"><span class="dot"></span>Mara Feldmann (Ich)</div>
+          <div class="sync-line">Eigener Kalender</div>
+        </div>
+        <div class="col-header">
+          <div class="person-name"><span class="dot" style="background:#C9A48A;"></span>Björn Ostermann</div>
+          <div class="sync-line">Zuletzt synchronisiert vor 3 Min.</div>
+        </div>
+        <div class="col-header">
+          <div class="person-name"><span class="dot" style="background:#8FA3B8;"></span>Katharina Vogel</div>
+          <div class="sync-line">Zuletzt synchronisiert vor 8 Min.</div>
+        </div>
+      </div>
+      <div class="grid-body">
+        <div class="time-gutter">
+          <div class="time-slot">09:00</div>
+          <div class="time-slot">10:00</div>
+        </div>
+        <div class="day-col"><div class="status-block teal">●&nbsp;Unterbrechbar</div></div>
+        <div class="day-col"><div class="status-block rose">●&nbsp;Bitte nicht stören</div></div>
+        <div class="day-col"><div class="status-block teal">●&nbsp;Unterbrechbar</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

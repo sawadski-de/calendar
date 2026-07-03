@@ -1,0 +1,74 @@
+<div class="app-frame">
+  <header class="app-frame__header">
+    <span class="text-label">{{ 'app.title' | transloco }}</span>
+    <div class="app-frame__actions">
+      <app-language-switcher />
+      <button type="button" class="app-frame__logout text-caption" (click)="logout()">
+        {{ 'nav.logout' | transloco }}
+      </button>
+    </div>
+  </header>
+
+  <main class="app-frame__main">
+    <div class="calendar-toolbar">
+      <div class="calendar-toolbar__nav">
+        <button
+          type="button"
+          class="calendar-toolbar__button"
+          (click)="navigatePrevious()"
+          [attr.aria-label]="'calendar.previous' | transloco"
+        >
+          ‹
+        </button>
+        <button type="button" class="calendar-toolbar__button calendar-toolbar__today" (click)="navigateToday()">
+          {{ 'calendar.today' | transloco }}
+        </button>
+        <button
+          type="button"
+          class="calendar-toolbar__button"
+          (click)="navigateNext()"
+          [attr.aria-label]="'calendar.next' | transloco"
+        >
+          ›
+        </button>
+      </div>
+      <app-view-switcher [active]="viewType()" (activeChange)="setViewType($event)" />
+    </div>
+
+    @if (isEmpty()) {
+      <p class="calendar-empty text-body">{{ 'calendar.empty' | transloco }}</p>
+    } @else {
+      @switch (viewType()) {
+        @case ('month') {
+          <app-month-view [focusDate]="focusDate()" [appointments]="appointments()" />
+        }
+        @case ('week') {
+          <div class="calendar-grid">
+            <div class="calendar-gutter">
+              @for (hour of hourLabels; track hour) {
+                <span class="calendar-gutter__label text-caption">{{ hour }}:00</span>
+              }
+            </div>
+            <div class="calendar-grid__columns">
+              @for (day of weekDays(); track day.getTime()) {
+                <app-calendar-column [date]="day" [appointments]="appointmentsFor(day)" />
+              }
+            </div>
+          </div>
+        }
+        @case ('day') {
+          <div class="calendar-grid">
+            <div class="calendar-gutter">
+              @for (hour of hourLabels; track hour) {
+                <span class="calendar-gutter__label text-caption">{{ hour }}:00</span>
+              }
+            </div>
+            <div class="calendar-grid__columns">
+              <app-calendar-column [date]="dayDate()" [appointments]="appointmentsFor(dayDate())" />
+            </div>
+          </div>
+        }
+      }
+    }
+  </main>
+</div>

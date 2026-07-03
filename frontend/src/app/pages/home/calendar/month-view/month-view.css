@@ -1,0 +1,38 @@
+.month-view {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--space-1);
+}
+
+.month-view__cell {
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+  min-height: 88px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.month-view__cell:hover {
+  background: var(--color-surface-2);
+}
+
+.month-view__cell--outside {
+  opacity: 0.5;
+}
+
+.month-view__day-number {
+  color: var(--color-muted);
+}
+
+.month-view__title {
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.month-view__more {
+  color: var(--color-muted);
+}

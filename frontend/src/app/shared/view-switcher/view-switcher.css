@@ -1,0 +1,22 @@
+.view-switcher {
+  display: inline-flex;
+  background: var(--color-surface-2);
+  border-radius: var(--radius-full);
+  padding: 2px;
+  gap: 2px;
+}
+
+.view-switcher__item {
+  background: transparent;
+  border: none;
+  color: var(--color-muted);
+  border-radius: var(--radius-full);
+  padding: var(--space-1) var(--space-4);
+  font-family: var(--font-family);
+  cursor: pointer;
+}
+
+.view-switcher__item--active {
+  background: var(--color-accent);
+  color: var(--color-accent-on);
+}

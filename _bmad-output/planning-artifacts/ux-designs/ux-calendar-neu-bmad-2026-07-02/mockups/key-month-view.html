@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>TeamKalender — Monatsansicht, Mehrpersonen-Status (Option C)</title>
+<style>
+/*
+  KEY SCREEN 1 — Monatsansicht + Mehrpersonen-Popover
+  ====================================================
+  Governed by:
+   - DESIGN.md: Colors, Typography, Shapes, Elevation & Depth,
+     Components > "Month day cell" (components.month-day-cell),
+     Components > "Appointment detail popover" (reused shape for the
+     month-cell status popover), Components > "Status badge / status block".
+   - EXPERIENCE.md: Information Architecture > "Multi-person view — Month";
+     Component Patterns > "Month day cell + popover";
+     Interaction Primitives > "Click to expand month popover";
+     Accessibility Floor (status = color + icon + text label, never color alone).
+   - .memlog.md decision: month-view mechanism = wireframe "Option C" —
+     day cell stays clean by default, only a subtle aggregate marker
+     (colors.dnd) when someone selected is "Bitte nicht stören" that day;
+     click opens a popover listing each selected teammate's status.
+
+  All hex/radius/spacing values below are copied verbatim from DESIGN.md.
+*/
+:root{
+  --bg:#12151A; --surface:#1A1E24; --surface-2:#20242B;
+  --text:#E7EAEE; --muted:#8B95A1; --border:#2B3038;
+  --accent:#4FD1C5; --accent-on:#0A1F1E;
+  --interruptible:#59C2C0; --interruptible-fill:rgba(89,194,192,0.12); --interruptible-text:#A9E4E2;
+  --dnd:#C2685F; --dnd-fill:rgba(194,104,95,0.12); --dnd-text:#E7B7B0;
+  --r-sm:8px; --r-md:12px; --r-lg:16px; --r-full:9999px;
+  --sp1:4px; --sp2:8px; --sp3:12px; --sp4:16px; --sp5:20px; --sp6:24px; --sp7:28px; --sp8:36px;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;background:#0B0D10;font-family:"IBM Plex Sans",-apple-system,"Segoe UI",Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased;}
+body{padding:40px 20px;display:flex;justify-content:center;}
+.browser-frame{width:100%;max-width:1180px;background:var(--bg);border-radius:var(--r-lg);border:1px solid var(--border);box-shadow:0 24px 60px -20px rgba(6,8,11,0.55),0 4px 14px rgba(6,8,11,0.3);overflow:hidden;height:fit-content;}
+.browser-chrome{display:flex;align-items:center;gap:14px;padding:12px 16px;background:var(--surface-2);border-bottom:1px solid var(--border);}
+.chrome-dots{display:flex;gap:6px;}
+.chrome-dots span{width:10px;height:10px;border-radius:50%;background:#3A404A;}
+.chrome-dots span:nth-child(1){background:#55474A;}
+.chrome-dots span:nth-child(2){background:#57544A;}
+.chrome-dots span:nth-child(3){background:#3E5150;}
+.chrome-url{flex:1;max-width:320px;margin:0 auto;text-align:center;background:var(--bg);border:1px solid var(--border);border-radius:var(--r-full);padding:5px 14px;font-size:12px;color:var(--muted);}
+.app{padding:22px 28px 34px;background:var(--bg);}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:22px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-lg);padding:12px 16px;}
+.wordmark{display:flex;align-items:center;gap:9px;font-size:16.5px;font-weight:700;color:var(--text);letter-spacing:-0.01em;}
+.wordmark .mark{width:26px;height:26px;border-radius:var(--r-sm);background:linear-gradient(155deg,var(--interruptible),#2f7f7e);display:flex;align-items:center;justify-content:center;}
+.wordmark .mark svg{width:14px;height:14px;}
+.topbar-right{display:flex;align-items:center;gap:12px;}
+.view-switcher{display:flex;background:var(--bg);border:1px solid var(--border);border-radius:var(--r-full);padding:4px;gap:2px;}
+.view-switcher button{border:none;background:transparent;font-family:inherit;font-size:13px;font-weight:600;padding:7px 16px;border-radius:var(--r-full);color:var(--muted);}
+.view-switcher button.active{background:var(--accent);color:var(--accent-on);box-shadow:0 3px 10px -3px rgba(79,209,197,0.55);}
+.lang-switch,.mode-toggle{font-size:13px;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:var(--r-full);padding:6px 12px;display:flex;align-items:center;gap:6px;font-weight:600;}
+.mode-toggle{padding:6px 9px;color:var(--accent);border-color:rgba(79,209,197,0.4);background:rgba(79,209,197,0.08);}
+.mode-toggle svg{width:15px;height:15px;}
+.subheader{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:14px;}
+.date-heading{font-size:20px;font-weight:700;letter-spacing:-0.01em;color:var(--text);}
+.person-selector{display:flex;align-items:center;gap:8px;}
+.avatar-chip{display:flex;align-items:center;gap:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-full);padding:5px 12px 5px 5px;font-size:12.5px;font-weight:600;color:var(--text);}
+.avatar-dot{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:700;color:#0F1216;}
+.add-person-ghost{border:1px solid var(--border);background:transparent;color:var(--muted);border-radius:var(--r-full);font-size:12.5px;font-weight:600;padding:7px 14px;font-family:inherit;}
+.legend{display:flex;gap:var(--sp5);align-items:center;margin-bottom:var(--sp4);font-size:11px;color:var(--muted);}
+.legend-item{display:flex;align-items:center;gap:6px;}
+.legend-marker{width:8px;height:8px;border-radius:50%;background:var(--dnd);}
+
+/* ---- month grid ---- */
+.month-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:var(--sp5);position:relative;}
+.weekday-row{display:grid;grid-template-columns:repeat(7,1fr);gap:var(--sp2);margin-bottom:var(--sp3);}
+.weekday-row div{font-size:9.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);text-align:left;padding-left:var(--sp2);}
+.month-grid{display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:100px;gap:var(--sp2);}
+.day-cell{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:var(--sp2) var(--sp3);position:relative;display:flex;flex-direction:column;}
+.day-cell.outside{background:var(--bg);}
+.day-cell.outside .day-num{color:#4A515C;}
+.day-num{font-size:12.5px;font-weight:600;color:var(--text);}
+.day-cell.today{border-color:var(--accent);box-shadow:0 0 0 1px rgba(79,209,197,0.35) inset;}
+.day-cell.today .day-num{color:var(--accent-on);background:var(--accent);width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;}
+.day-cell.expanded{background:var(--surface-2);border-color:var(--accent);z-index:20;}
+.aggregate-marker{position:absolute;bottom:var(--sp2);left:var(--sp3);display:flex;align-items:center;gap:5px;font-size:9.5px;font-weight:600;color:var(--dnd-text);background:var(--dnd-fill);border-left:2.5px solid var(--dnd);border-radius:var(--r-sm);padding:2px 7px 2px 6px;}
+.aggregate-marker .dot{width:6px;height:6px;border-radius:50%;background:var(--dnd);flex:none;}
+
+/* ---- month-cell status popover (shares appointment-detail-popover spec) ---- */
+.month-popover{position:absolute;top:calc(100% + 8px);left:0;width:264px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-md);box-shadow:0 18px 40px -12px rgba(6,8,11,0.6);padding:var(--sp4) var(--sp4) var(--sp3);z-index:40;}
+.month-popover .pop-title{font-size:13.5px;font-weight:700;color:var(--text);margin-bottom:var(--sp3);}
+.pop-row{display:flex;align-items:center;justify-content:space-between;gap:var(--sp3);padding:var(--sp2) 0;border-top:1px solid var(--border);}
+.pop-row:first-of-type{border-top:none;}
+.pop-person{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:var(--text);}
+.pop-avatar{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#0F1216;flex:none;}
+.pop-badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;padding:4px 10px;border-radius:var(--r-md);flex:none;}
+.pop-badge.teal{background:var(--interruptible-fill);border-left:3px solid var(--interruptible);color:var(--interruptible-text);}
+.pop-badge.rose{background:var(--dnd-fill);border-left:3px solid var(--dnd);color:var(--dnd-text);}
+.pop-badge .glyph{font-size:9px;}
+.pop-hint{margin-top:var(--sp3);padding-top:var(--sp2);border-top:1px solid var(--border);font-size:11px;color:var(--muted);line-height:1.4;}
+</style>
+</head>
+<body>
+
+<div class="browser-frame">
+  <div class="browser-chrome">
+    <div class="chrome-dots"><span></span><span></span><span></span></div>
+    <div class="chrome-url">kalender.intern.firma.de</div>
+  </div>
+
+  <div class="app">
+    <div class="topbar">
+      <div class="wordmark">
+        <span class="mark"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="16" rx="3" stroke="#0A1F1E" stroke-width="1.6"/><path d="M3 10H21" stroke="#0A1F1E" stroke-width="1.6"/><path d="M8 3V6.5" stroke="#0A1F1E" stroke-width="1.6" stroke-linecap="round"/><path d="M16 3V6.5" stroke="#0A1F1E" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+        TeamKalender
+      </div>
+      <div class="topbar-right">
+        <div class="view-switcher">
+          <button class="active">Monat</button>
+          <button>Woche</button>
+          <button>Tag</button>
+        </div>
+        <div class="lang-switch">DE ▾</div>
+        <div class="mode-toggle"><svg viewBox="0 0 24 24" fill="none"><path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a7 7 0 0 0 11 11Z" stroke="#4FD1C5" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+      </div>
+    </div>
+
+    <div class="subheader">
+      <div class="date-heading">Juli 2026</div>
+      <div class="person-selector">
+        <div class="avatar-chip"><span class="avatar-dot" style="background:#C9A48A;">BO</span>Björn Ostermann</div>
+        <div class="avatar-chip"><span class="avatar-dot" style="background:#8FA3B8;">KV</span>Katharina Vogel</div>
+        <button class="add-person-ghost">+ Person hinzufügen</button>
+      </div>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item"><span class="legend-marker"></span>Mind. eine ausgewählte Person „Bitte nicht stören" an diesem Tag</div>
+    </div>
+
+    <div class="month-panel">
+      <div class="weekday-row">
+        <div>Mo</div><div>Di</div><div>Mi</div><div>Do</div><div>Fr</div><div>Sa</div><div>So</div>
+      </div>
+      <div class="month-grid">
+        <!-- Woche 1: 29 Jun – 5 Jul -->
+        <div class="day-cell outside"><div class="day-num">29</div></div>
+        <div class="day-cell outside"><div class="day-num">30</div></div>
+        <div class="day-cell"><div class="day-num">1</div></div>
+        <div class="day-cell today"><div class="day-num">2</div></div>
+        <div class="day-cell"><div class="day-num">3</div></div>
+        <div class="day-cell"><div class="day-num">4</div></div>
+        <div class="day-cell"><div class="day-num">5</div></div>
+
+        <!-- Woche 2: 6 – 12 Jul -->
+        <div class="day-cell"><div class="day-num">6</div></div>
+        <div class="day-cell"><div class="day-num">7</div></div>
+        <div class="day-cell">
+          <div class="day-num">8</div>
+          <div class="aggregate-marker"><span class="dot"></span>1 nicht störbar</div>
+        </div>
+        <div class="day-cell"><div class="day-num">9</div></div>
+        <div class="day-cell"><div class="day-num">10</div></div>
+        <div class="day-cell"><div class="day-num">11</div></div>
+        <div class="day-cell"><div class="day-num">12</div></div>
+
+        <!-- Woche 3: 13 – 19 Jul -->
+        <div class="day-cell"><div class="day-num">13</div></div>
+        <div class="day-cell"><div class="day-num">14</div></div>
+        <div class="day-cell expanded">
+          <div class="day-num">15</div>
+          <div class="aggregate-marker"><span class="dot"></span>1 nicht störbar</div>
+
+          <!-- Month-cell status popover: Option C, click-to-expand -->
+          <div class="month-popover">
+            <div class="pop-title">Mittwoch, 15. Juli 2026</div>
+            <div class="pop-row">
+              <div class="pop-person"><span class="pop-avatar" style="background:#C9A48A;">BO</span>Björn Ostermann</div>
+              <span class="pop-badge rose"><span class="glyph">●</span>Bitte nicht stören</span>
+            </div>
+            <div class="pop-row">
+              <div class="pop-person"><span class="pop-avatar" style="background:#8FA3B8;">KV</span>Katharina Vogel</div>
+              <span class="pop-badge teal"><span class="glyph">●</span>Unterbrechbar</span>
+            </div>
+            <div class="pop-hint">Details sind privat — nur der Status ist sichtbar.</div>
+          </div>
+        </div>
+        <div class="day-cell"><div class="day-num">16</div></div>
+        <div class="day-cell"><div class="day-num">17</div></div>
+        <div class="day-cell"><div class="day-num">18</div></div>
+        <div class="day-cell"><div class="day-num">19</div></div>
+
+        <!-- Woche 4: 20 – 26 Jul -->
+        <div class="day-cell"><div class="day-num">20</div></div>
+        <div class="day-cell"><div class="day-num">21</div></div>
+        <div class="day-cell"><div class="day-num">22</div></div>
+        <div class="day-cell">
+          <div class="day-num">23</div>
+          <div class="aggregate-marker"><span class="dot"></span>1 nicht störbar</div>
+        </div>
+        <div class="day-cell"><div class="day-num">24</div></div>
+        <div class="day-cell"><div class="day-num">25</div></div>
+        <div class="day-cell"><div class="day-num">26</div></div>
+
+        <!-- Woche 5: 27 Jul – 2 Aug -->
+        <div class="day-cell"><div class="day-num">27</div></div>
+        <div class="day-cell"><div class="day-num">28</div></div>
+        <div class="day-cell"><div class="day-num">29</div></div>
+        <div class="day-cell"><div class="day-num">30</div></div>
+        <div class="day-cell"><div class="day-num">31</div></div>
+        <div class="day-cell outside"><div class="day-num">1</div></div>
+        <div class="day-cell outside"><div class="day-num">2</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

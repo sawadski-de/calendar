@@ -1,0 +1,76 @@
+# generated: 2026-07-03
+# last_updated: 2026-07-03
+# project: calendar-neu-bmad
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: {project-root}/_bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# Action Item Status:
+#   - open: Committed during a retrospective, not yet addressed
+#   - in-progress: Actively being worked on
+#   - done: Completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - Developer typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+# - Retrospective appends its action items to action_items; sprint-status surfaces open ones
+
+generated: 2026-07-03
+last_updated: 2026-07-03
+project: calendar-neu-bmad
+project_key: NOKEY
+tracking_system: file-system
+story_location: "{project-root}/_bmad-output/implementation-artifacts"
+
+development_status:
+  epic-1: in-progress
+  1-1-projekt-grundgeruest-anmeldung-sprache: done
+  1-2-eigene-kalenderansicht-monat-woche-tag: review
+  1-3-termin-anlegen-nativ-mit-automatischem-verfuegbarkeits-status: backlog
+  1-4-termin-detailansicht-eigene-termine: backlog
+  epic-1-retrospective: optional
+
+  epic-2: backlog
+  2-1-google-kalender-verbinden-importieren: backlog
+  2-2-outlook-kalender-verbinden-importieren: backlog
+  2-3-admin-sync-uebersicht: backlog
+  epic-2-retrospective: optional
+
+  epic-3: backlog
+  3-1-personen-selektor-mehrpersonen-ansicht-tag-woche-mit-privat-default: backlog
+  3-2-mehrpersonen-monatsansicht-mit-aggregat-popover: backlog
+  epic-3-retrospective: optional
+
+  epic-4: backlog
+  4-1-status-override-setzen-und-zuruecksetzen: backlog
+  epic-4-retrospective: optional
+
+  epic-5: backlog
+  5-1-teammitglied-deaktivieren-soft-deprovisionierung: backlog
+  5-2-automatisiertes-backup-restore-runbook: backlog
+  epic-5-retrospective: optional

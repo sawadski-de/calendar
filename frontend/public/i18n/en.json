@@ -1,0 +1,30 @@
+{
+  "app": {
+    "title": "Team Calendar"
+  },
+  "login": {
+    "heading": "Sign in",
+    "emailLabel": "Email",
+    "passwordLabel": "Password",
+    "submit": "Sign in",
+    "genericError": "Sign-in failed. Please check your credentials."
+  },
+  "nav": {
+    "logout": "Sign out"
+  },
+  "calendar": {
+    "viewMonth": "Month",
+    "viewWeek": "Week",
+    "viewDay": "Day",
+    "viewSwitcherLabel": "View",
+    "previous": "Previous",
+    "next": "Next",
+    "today": "Today",
+    "empty": "You don't have any appointments yet."
+  },
+  "languageSwitcher": {
+    "groupLabel": "Language",
+    "de": "DE",
+    "en": "EN"
+  }
+}

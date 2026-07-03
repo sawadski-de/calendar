@@ -1,0 +1,30 @@
+{
+  "app": {
+    "title": "Team-Terminkalender"
+  },
+  "login": {
+    "heading": "Anmelden",
+    "emailLabel": "E-Mail",
+    "passwordLabel": "Passwort",
+    "submit": "Anmelden",
+    "genericError": "Anmeldung fehlgeschlagen. Bitte überprüfe deine Zugangsdaten."
+  },
+  "nav": {
+    "logout": "Abmelden"
+  },
+  "calendar": {
+    "viewMonth": "Monat",
+    "viewWeek": "Woche",
+    "viewDay": "Tag",
+    "viewSwitcherLabel": "Ansicht",
+    "previous": "Zurück",
+    "next": "Weiter",
+    "today": "Heute",
+    "empty": "Du hast noch keine Termine."
+  },
+  "languageSwitcher": {
+    "groupLabel": "Sprache",
+    "de": "DE",
+    "en": "EN"
+  }
+}

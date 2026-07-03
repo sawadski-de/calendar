@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>TeamKalender — Termin erstellen (3 Zustände)</title>
+<style>
+/*
+  KEY SCREEN — Termin-Erstellen-Formular: vorausgefüllt / leer / Validierungsfehler
+  ====================================================
+  Governed by:
+   - DESIGN.md: Colors (status/error colors — dnd/dnd-text, never raw dnd
+     as text; accent for primary actions and focus rings; border-interactive
+     for stroke-only interactive control boundaries), Typography (label-caps
+     for field labels), Shapes (rounded.sm/md/full), Elevation & Depth
+     (popover shadow reused for the create-form panel — the form is not an
+     explicitly named component but is closest in shape/behavior to
+     components.appointment-detail-popover: surface-2 bg, border, rounded.md,
+     drop shadow), Components > "Appointment-create-entry" (ghost-pill
+     border-interactive spec for secondary/Abbrechen actions), Components >
+     "Person selector" (chip row reused for the optional Teilnehmer field).
+   - EXPERIENCE.md: Information Architecture > "Appointment creation —
+     prefilled" / "— blank"; Component Patterns > "Appointment creation
+     entry points" (double-click pre-fills date+time; "+ Neuer Termin" opens
+     blank, user sets date/time manually — same resulting object either way);
+     State Patterns > "Appointment creation — validation error" (inline,
+     field-level error, form stays open, entered values preserved, focus
+     moves to first invalid field); Key Flows > Flow 2 ("Kurzabstimmung
+     Projekt Atlas" example title; Mara's blank-form + failure-branch
+     example); Accessibility Floor (focus states use colors.accent; no
+     color-alone signaling — error also carries icon + text).
+   - PRD FR-3: real fields are title, date/time, duration, optional
+     attendees — no location field in MVP (deliberately omitted here).
+
+  All hex/radius/spacing values below are copied verbatim from DESIGN.md.
+  Note: form text-inputs are not an explicitly named DESIGN.md component;
+  their border uses colors.border-interactive (not the decorative
+  colors.border) because they are genuinely interactive control boundaries —
+  a reasonable, non-inventive extension of the same AA 1.4.11 rationale
+  DESIGN.md already applies to the status-override button, ghost pills, and
+  the person-selector "+" chip.
+*/
+:root{
+  --bg:#12151A; --surface:#1A1E24; --surface-2:#20242B;
+  --text:#E7EAEE; --muted:#8B95A1; --border:#2B3038; --border-interactive:#647079;
+  --accent:#4FD1C5; --accent-on:#0A1F1E;
+  --dnd:#C2685F; --dnd-fill:rgba(194,104,95,0.12); --dnd-text:#E7B7B0;
+  --r-sm:8px; --r-md:12px; --r-lg:16px; --r-full:9999px;
+  --sp1:4px; --sp2:8px; --sp3:12px; --sp4:16px; --sp5:20px; --sp6:24px; --sp7:28px; --sp8:36px;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;background:#0B0D10;font-family:"IBM Plex Sans",-apple-system,"Segoe UI",Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased;}
+body{padding:40px 20px;display:flex;justify-content:center;}
+.browser-frame{width:100%;max-width:1220px;background:var(--bg);border-radius:var(--r-lg);border:1px solid var(--border);box-shadow:0 24px 60px -20px rgba(6,8,11,0.55),0 4px 14px rgba(6,8,11,0.3);overflow:hidden;height:fit-content;}
+.browser-chrome{display:flex;align-items:center;gap:14px;padding:12px 16px;background:var(--surface-2);border-bottom:1px solid var(--border);}
+.chrome-dots{display:flex;gap:6px;}
+.chrome-dots span{width:10px;height:10px;border-radius:50%;background:#3A404A;}
+.chrome-dots span:nth-child(1){background:#55474A;}
+.chrome-dots span:nth-child(2){background:#57544A;}
+.chrome-dots span:nth-child(3){background:#3E5150;}
+.chrome-url{flex:1;max-width:320px;margin:0 auto;text-align:center;background:var(--bg);border:1px solid var(--border);border-radius:var(--r-full);padding:5px 14px;font-size:12px;color:var(--muted);}
+.app{padding:22px 28px 40px;background:var(--bg);}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:22px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-lg);padding:12px 16px;}
+.wordmark{display:flex;align-items:center;gap:9px;font-size:16.5px;font-weight:700;color:var(--text);letter-spacing:-0.01em;}
+.wordmark .mark{width:26px;height:26px;border-radius:var(--r-sm);background:linear-gradient(155deg,#59C2C0,#2f7f7e);display:flex;align-items:center;justify-content:center;}
+.wordmark .mark svg{width:14px;height:14px;}
+.topbar-right{display:flex;align-items:center;gap:12px;}
+.view-switcher{display:flex;background:var(--bg);border:1px solid var(--border);border-radius:var(--r-full);padding:4px;gap:2px;}
+.view-switcher button{border:none;background:transparent;font-family:inherit;font-size:13px;font-weight:600;padding:7px 16px;border-radius:var(--r-full);color:var(--muted);}
+.view-switcher button.active{background:var(--accent);color:var(--accent-on);box-shadow:0 3px 10px -3px rgba(79,209,197,0.55);}
+.lang-switch,.mode-toggle{font-size:13px;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:var(--r-full);padding:6px 12px;display:flex;align-items:center;gap:6px;font-weight:600;}
+.mode-toggle{padding:6px 9px;color:var(--accent);border-color:rgba(79,209,197,0.4);background:rgba(79,209,197,0.08);}
+.mode-toggle svg{width:15px;height:15px;}
+
+.page-heading{font-size:20px;font-weight:700;letter-spacing:-0.01em;color:var(--text);margin-bottom:8px;}
+.page-sub{font-size:12.5px;color:var(--muted);line-height:1.55;max-width:74ch;margin-bottom:26px;}
+.page-sub strong{color:var(--text);font-weight:600;}
+
+.scenario-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp5);align-items:start;}
+.scenario{display:flex;flex-direction:column;gap:var(--sp3);}
+.scenario-label{font-size:11.5px;font-weight:600;color:var(--muted);line-height:1.5;}
+.scenario-label strong{color:var(--text);}
+
+/* ---- form panel: shares appointment-detail-popover visual shape ---- */
+.form-card{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-md);box-shadow:0 14px 30px -18px rgba(6,8,11,0.6);padding:var(--sp5);}
+.form-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--sp4);}
+.form-title{font-size:13.5px;font-weight:700;color:var(--text);}
+.form-close{color:var(--muted);font-size:15px;line-height:1;}
+
+.field-group{margin-bottom:var(--sp4);}
+.field-group:last-of-type{margin-bottom:0;}
+.field-label{font-size:9.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:6px;}
+.field-row{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:var(--sp2);}
+
+.field-input{width:100%;background:var(--bg);border:1px solid var(--border-interactive);border-radius:var(--r-sm);color:var(--text);font-family:inherit;font-size:12px;padding:8px 10px;}
+.field-input.placeholder-look{color:var(--muted);}
+.field-input.filled{color:var(--text);font-weight:600;}
+.field-input.error{border-color:var(--dnd);box-shadow:0 0 0 3px rgba(79,209,197,0.22);}
+
+.field-error{display:flex;gap:6px;align-items:flex-start;margin-top:6px;font-size:11px;color:var(--dnd-text);line-height:1.4;}
+.field-error svg{width:12px;height:12px;flex:none;margin-top:1px;color:var(--dnd);}
+
+.chip-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;}
+.avatar-chip{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-full);padding:4px 9px 4px 4px;font-size:11.5px;font-weight:600;color:var(--text);}
+.avatar-dot{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#0F1216;flex:none;}
+.chip-remove{color:var(--muted);font-size:11px;margin-left:1px;}
+.add-chip{border:1px solid var(--border-interactive);background:transparent;color:var(--muted);border-radius:var(--r-full);font-size:11.5px;font-weight:600;padding:5px 12px;font-family:inherit;}
+
+.form-footer{display:flex;justify-content:flex-end;gap:var(--sp2);margin-top:var(--sp5);}
+.btn-ghost{border:1px solid var(--border-interactive);background:transparent;color:var(--muted);border-radius:var(--r-full);font-size:12px;font-weight:600;padding:8px 16px;font-family:inherit;}
+.btn-primary{border:1px solid var(--accent);background:var(--accent);color:var(--accent-on);border-radius:var(--r-full);font-size:12px;font-weight:700;padding:8px 18px;font-family:inherit;}
+</style>
+</head>
+<body>
+
+<div class="browser-frame">
+  <div class="browser-chrome">
+    <div class="chrome-dots"><span></span><span></span><span></span></div>
+    <div class="chrome-url">kalender.intern.firma.de</div>
+  </div>
+
+  <div class="app">
+    <div class="topbar">
+      <div class="wordmark">
+        <span class="mark"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="16" rx="3" stroke="#0A1F1E" stroke-width="1.6"/><path d="M3 10H21" stroke="#0A1F1E" stroke-width="1.6"/><path d="M8 3V6.5" stroke="#0A1F1E" stroke-width="1.6" stroke-linecap="round"/><path d="M16 3V6.5" stroke="#0A1F1E" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+        TeamKalender
+      </div>
+      <div class="topbar-right">
+        <div class="view-switcher">
+          <button>Monat</button>
+          <button class="active">Woche</button>
+          <button>Tag</button>
+        </div>
+        <div class="lang-switch">DE ▾</div>
+        <div class="mode-toggle"><svg viewBox="0 0 24 24" fill="none"><path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a7 7 0 0 0 11 11Z" stroke="#4FD1C5" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+      </div>
+    </div>
+
+    <div class="page-heading">Termin erstellen</div>
+    <div class="page-sub">Drei Zustände desselben Formulars: <strong>vorausgefüllt</strong> nach Doppelklick auf einen freien Zeit-Slot, <strong>leer</strong> über den Button „+ Neuer Termin", und der <strong>Validierungsfehler</strong>, wenn ohne Titel gespeichert wird. Alle drei erzeugen dasselbe Termin-Objekt — keiner der beiden Einstiege ist eine abgespeckte Version des anderen.</div>
+
+    <div class="scenario-grid">
+
+      <!-- (a) PREFILLED via double-click on empty slot -->
+      <div class="scenario">
+        <div class="scenario-label"><strong>Vorausgefüllt</strong> — Doppelklick auf einen freien Slot in der Wochenansicht (Do., 14:00–14:30)</div>
+        <div class="form-card">
+          <div class="form-head">
+            <div class="form-title">Neuer Termin</div>
+            <div class="form-close">✕</div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Titel</label>
+            <div class="field-input filled">Kurzabstimmung Projekt Atlas</div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Datum</label>
+            <div class="field-input filled">Donnerstag, 2. Juli 2026</div>
+          </div>
+          <div class="field-group">
+            <div class="field-row">
+              <div>
+                <label class="field-label">Startzeit</label>
+                <div class="field-input filled">14:00</div>
+              </div>
+              <div>
+                <label class="field-label">Dauer</label>
+                <div class="field-input filled">30 Min.</div>
+              </div>
+              <div>
+                <label class="field-label">Ende</label>
+                <div class="field-input filled">14:30</div>
+              </div>
+            </div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Teilnehmer (optional)</label>
+            <div class="chip-row">
+              <button class="add-chip">+ Teilnehmer hinzufügen</button>
+            </div>
+          </div>
+          <div class="form-footer">
+            <button class="btn-ghost">Abbrechen</button>
+            <button class="btn-primary">Speichern</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- (b) BLANK via "+ Neuer Termin" -->
+      <div class="scenario">
+        <div class="scenario-label"><strong>Leer</strong> — geöffnet über den Button „+ Neuer Termin", ohne vorgewählte Zeit</div>
+        <div class="form-card">
+          <div class="form-head">
+            <div class="form-title">Neuer Termin</div>
+            <div class="form-close">✕</div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Titel</label>
+            <div class="field-input placeholder-look">z. B. Kurzabstimmung Projekt Atlas</div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Datum</label>
+            <div class="field-input placeholder-look">Datum wählen</div>
+          </div>
+          <div class="field-group">
+            <div class="field-row">
+              <div>
+                <label class="field-label">Startzeit</label>
+                <div class="field-input placeholder-look">Uhrzeit</div>
+              </div>
+              <div>
+                <label class="field-label">Dauer</label>
+                <div class="field-input placeholder-look">Dauer</div>
+              </div>
+              <div>
+                <label class="field-label">Ende</label>
+                <div class="field-input placeholder-look">—</div>
+              </div>
+            </div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Teilnehmer (optional)</label>
+            <div class="chip-row">
+              <button class="add-chip">+ Teilnehmer hinzufügen</button>
+            </div>
+          </div>
+          <div class="form-footer">
+            <button class="btn-ghost">Abbrechen</button>
+            <button class="btn-primary">Speichern</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- (c) VALIDATION ERROR: save attempted with no title -->
+      <div class="scenario">
+        <div class="scenario-label"><strong>Validierungsfehler</strong> — Speichern ohne Titel; Datum/Uhrzeit/Teilnehmer bleiben erhalten, Fokus springt zum Titel</div>
+        <div class="form-card">
+          <div class="form-head">
+            <div class="form-title">Neuer Termin</div>
+            <div class="form-close">✕</div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Titel</label>
+            <div class="field-input placeholder-look error">Titel eingeben …</div>
+            <div class="field-error">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M12 8v5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><circle cx="12" cy="16.3" r="1" fill="currentColor"/><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.8"/></svg>
+              Bitte gib einen Titel ein.
+            </div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Datum</label>
+            <div class="field-input filled">Montag, 6. Juli 2026</div>
+          </div>
+          <div class="field-group">
+            <div class="field-row">
+              <div>
+                <label class="field-label">Startzeit</label>
+                <div class="field-input filled">09:00</div>
+              </div>
+              <div>
+                <label class="field-label">Dauer</label>
+                <div class="field-input filled">30 Min.</div>
+              </div>
+              <div>
+                <label class="field-label">Ende</label>
+                <div class="field-input filled">09:30</div>
+              </div>
+            </div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Teilnehmer (optional)</label>
+            <div class="chip-row">
+              <span class="avatar-chip"><span class="avatar-dot" style="background:#9FB89A;">JK</span>Jonas Keller<span class="chip-remove">×</span></span>
+              <button class="add-chip">+ Teilnehmer hinzufügen</button>
+            </div>
+          </div>
+          <div class="form-footer">
+            <button class="btn-ghost">Abbrechen</button>
+            <button class="btn-primary">Speichern</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
