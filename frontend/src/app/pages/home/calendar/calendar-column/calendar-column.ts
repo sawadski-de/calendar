@@ -36,6 +36,7 @@ export class CalendarColumn {
   readonly date = input.required<Date>();
   readonly appointments = input<Appointment[]>([]);
   readonly slotActivated = output<Date>();
+  readonly appointmentActivated = output<string>();
 
   readonly totalHeightPx = 24 * HOUR_HEIGHT_PX;
 
@@ -93,6 +94,10 @@ export class CalendarColumn {
     if (!slot.occupied) {
       this.slotActivated.emit(slot.start);
     }
+  }
+
+  activateAppointment(appointmentId: string): void {
+    this.appointmentActivated.emit(appointmentId);
   }
 }
 

@@ -35,7 +35,13 @@
     "createSave": "Speichern",
     "addAttendee": "+ Teilnehmer hinzufügen",
     "statusInterruptible": "Unterbrechbar",
-    "statusDnd": "Bitte nicht stören"
+    "statusDnd": "Bitte nicht stören",
+    "detailClose": "Schließen",
+    "detailFieldDate": "Datum",
+    "detailFieldTime": "Zeit",
+    "detailFieldStatus": "Status",
+    "detailFieldAttendees": "Teilnehmer",
+    "detailNoAttendees": "Keine Teilnehmer"
   },
   "languageSwitcher": {
     "groupLabel": "Sprache",

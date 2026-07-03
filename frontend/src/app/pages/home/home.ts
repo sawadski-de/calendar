@@ -5,6 +5,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { LanguageSwitcher } from '../../shared/language-switcher/language-switcher';
 import { CalendarViewType, ViewSwitcher } from '../../shared/view-switcher/view-switcher';
 import { AppointmentCreate } from './calendar/appointment-create/appointment-create';
+import { AppointmentDetailPopover } from './calendar/appointment-detail/appointment-detail';
 import { Appointment } from './calendar/appointment.model';
 import { CalendarColumn } from './calendar/calendar-column/calendar-column';
 import { CalendarService } from './calendar/calendar.service';
@@ -16,7 +17,7 @@ const HOUR_LABELS = Array.from({ length: 24 }, (_, hour) => hour);
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [TranslocoPipe, LanguageSwitcher, ViewSwitcher, CalendarColumn, MonthView, AppointmentCreate],
+  imports: [TranslocoPipe, LanguageSwitcher, ViewSwitcher, CalendarColumn, MonthView, AppointmentCreate, AppointmentDetailPopover],
   templateUrl: './home.html',
   styleUrl: './home.css',
 })
@@ -40,6 +41,9 @@ export class Home implements OnInit {
 
   readonly createFormOpen = signal(false);
   readonly createFormPrefillStart = signal<Date | null>(null);
+
+  readonly detailOpen = signal(false);
+  readonly detailAppointmentId = signal<string | null>(null);
 
   private loadedMonthKey: string | null = null;
 
@@ -96,6 +100,15 @@ export class Home implements OnInit {
 
   onAppointmentCreateCancelled(): void {
     this.createFormOpen.set(false);
+  }
+
+  openDetail(appointmentId: string): void {
+    this.detailAppointmentId.set(appointmentId);
+    this.detailOpen.set(true);
+  }
+
+  onDetailClosed(): void {
+    this.detailOpen.set(false);
   }
 
   private moveFocusDate(direction: 1 | -1): void {

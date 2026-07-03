@@ -43,7 +43,11 @@
     } @else {
       @switch (viewType()) {
         @case ('month') {
-          <app-month-view [focusDate]="focusDate()" [appointments]="appointments()" />
+          <app-month-view
+            [focusDate]="focusDate()"
+            [appointments]="appointments()"
+            (appointmentActivated)="openDetail($event)"
+          />
         }
         @case ('week') {
           <div class="calendar-grid">
@@ -58,6 +62,7 @@
                   [date]="day"
                   [appointments]="appointmentsFor(day)"
                   (slotActivated)="openCreateFromSlot($event)"
+                  (appointmentActivated)="openDetail($event)"
                 />
               }
             </div>
@@ -75,6 +80,7 @@
                 [date]="dayDate()"
                 [appointments]="appointmentsFor(dayDate())"
                 (slotActivated)="openCreateFromSlot($event)"
+                (appointmentActivated)="openDetail($event)"
               />
             </div>
           </div>
@@ -89,5 +95,9 @@
       (saved)="onAppointmentSaved($event)"
       (cancelled)="onAppointmentCreateCancelled()"
     />
+  }
+
+  @if (detailOpen() && detailAppointmentId(); as appointmentId) {
+    <app-appointment-detail [appointmentId]="appointmentId" (closed)="onDetailClosed()" />
   }
 </div>

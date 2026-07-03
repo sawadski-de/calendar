@@ -20,6 +20,11 @@
       [style.height.%]="block.heightPercent"
       [style.left.%]="block.leftPercent"
       [style.width.%]="block.widthPercent"
+      tabindex="0"
+      role="button"
+      (click)="activateAppointment(block.layout.appointment.id)"
+      (keydown.enter)="activateAppointment(block.layout.appointment.id)"
+      (keydown.space)="activateAppointment(block.layout.appointment.id)"
     >
       <span class="calendar-column__title text-body">{{ block.layout.appointment.title }}</span>
       <span class="calendar-column__time text-caption">{{ block.timeLabel }}</span>

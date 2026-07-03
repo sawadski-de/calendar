@@ -1,4 +1,4 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, input, output } from '@angular/core';
 import { Appointment } from '../appointment.model';
 import { dateKey, getMonthGridDays, groupByDay } from '../date-utils';
 
@@ -20,6 +20,7 @@ const MAX_TITLES_PER_CELL = 2;
 export class MonthView {
   readonly focusDate = input.required<Date>();
   readonly appointments = input<Appointment[]>([]);
+  readonly appointmentActivated = output<string>();
 
   readonly maxTitlesPerCell = MAX_TITLES_PER_CELL;
 
@@ -38,4 +39,8 @@ export class MonthView {
       appointments: byDay.get(dateKey(date)) ?? [],
     }));
   });
+
+  activateAppointment(appointmentId: string): void {
+    this.appointmentActivated.emit(appointmentId);
+  }
 }

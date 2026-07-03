@@ -35,7 +35,13 @@
     "createSave": "Save",
     "addAttendee": "+ Add attendee",
     "statusInterruptible": "Interruptible",
-    "statusDnd": "Do not disturb"
+    "statusDnd": "Do not disturb",
+    "detailClose": "Close",
+    "detailFieldDate": "Date",
+    "detailFieldTime": "Time",
+    "detailFieldStatus": "Status",
+    "detailFieldAttendees": "Attendees",
+    "detailNoAttendees": "No attendees"
   },
   "languageSwitcher": {
     "groupLabel": "Language",
