@@ -4,7 +4,7 @@ baseline_commit: 460391e23fdc5d057cb226e15d08700e6770fdac
 
 # Story 1.3: Termin anlegen (nativ) mit automatischem Verfügbarkeits-Status
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
