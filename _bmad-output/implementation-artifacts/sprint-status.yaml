@@ -52,7 +52,7 @@ development_status:
   1-1-projekt-grundgeruest-anmeldung-sprache: done
   1-2-eigene-kalenderansicht-monat-woche-tag: done
   1-3-termin-anlegen-nativ-mit-automatischem-verfuegbarkeits-status: done
-  1-4-termin-detailansicht-eigene-termine: backlog
+  1-4-termin-detailansicht-eigene-termine: ready-for-dev
   epic-1-retrospective: optional
 
   epic-2: backlog
