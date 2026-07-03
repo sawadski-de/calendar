@@ -15,6 +15,14 @@ public class Appointment
     public AvailabilityStatus Status { get; private set; }
     public IReadOnlyCollection<Attendee> Attendees => _attendees;
 
+    /// <summary>
+    /// Stored for full internal access (FR-8) but not yet surfaced in any UI — the detail popover
+    /// deliberately omits it until FR-15 (map display) is built (Story 1.4 Dev Notes). Always
+    /// <c>null</c> for native appointments today, since there is no location input in the create form
+    /// yet; populated for synced events (Story 2.1) from the provider's location field.
+    /// </summary>
+    public string? Location { get; private set; }
+
     public Appointment(
         Guid id,
         Guid personId,
@@ -23,7 +31,8 @@ public class Appointment
         DateTimeOffset endUtc,
         string? provider = null,
         string? providerEventId = null,
-        bool isAllDay = false)
+        bool isAllDay = false,
+        string? location = null)
     {
         Id = id;
         PersonId = personId;
@@ -33,6 +42,7 @@ public class Appointment
         Provider = provider;
         ProviderEventId = providerEventId;
         IsAllDay = isAllDay;
+        Location = location;
     }
 
     /// <summary>
@@ -42,6 +52,14 @@ public class Appointment
     /// backing field, not a constructor parameter.
     /// </summary>
     public void AddAttendee(Guid personId) => _attendees.Add(new Attendee(Guid.NewGuid(), Id, personId));
+
+    /// <summary>
+    /// Attaches a participant carried over from a synced provider event (Story 2.1) — synced
+    /// attendees are always stored as external, even if the email happens to match a team member's;
+    /// resolving synced participants back to a <see cref="Person"/> is out of this story's scope.
+    /// </summary>
+    public void AddExternalAttendee(string email, string? displayName) =>
+        _attendees.Add(Attendee.External(Guid.NewGuid(), Id, email, displayName));
 
     /// <summary>
     /// Stores the availability status computed by <see cref="StatusHeuristicService.Compute"/> (AD-4).

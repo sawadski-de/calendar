@@ -32,7 +32,7 @@
         <span class="text-label-caps">{{ 'calendar.detailFieldAttendees' | transloco }}</span>
         @if (detail.attendees.length > 0) {
           <ul class="appointment-detail__attendees">
-            @for (attendee of detail.attendees; track attendee.personId) {
+            @for (attendee of detail.attendees; track $index) {
               <li class="appointment-detail__value text-body">{{ attendee.email }}</li>
             }
           </ul>

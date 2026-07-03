@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Api.Contracts;
 using Api.Errors;
+using Application.Accounts;
 using Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 
@@ -40,11 +41,15 @@ public static class AuthEndpoints
 
         // Session-check for the Angular route guard (AC 3): the auth cookie is HttpOnly and
         // therefore invisible to client JS, so the SPA has no other way to know it is logged in.
-        app.MapGet("/api/auth/me", (ClaimsPrincipal user) =>
+        // Role is read fresh from the DB (Story 2.3) — never trust a cached claim for a role-gated
+        // nav decision, same rule AdminOnlyAuthorizationHandler already follows for the real 403 check
+        // this only ever gates a convenience nav link, never replaces server-side enforcement (AD-17).
+        app.MapGet("/api/auth/me", async (ClaimsPrincipal user, IPersonRepository personRepository, CancellationToken cancellationToken) =>
         {
             var id = user.FindFirstValue(ClaimTypes.NameIdentifier);
             var email = user.FindFirstValue(ClaimTypes.Email);
-            return Results.Ok(new { id, email });
+            var person = await personRepository.GetByIdAsync(Guid.Parse(id!), cancellationToken);
+            return Results.Ok(new { id, email, role = person?.Role.ToString() });
         }).RequireAuthorization();
     }
 }

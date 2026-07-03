@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-03
-last_updated: 2026-07-03
+last_updated: 2026-07-04
 project: calendar-neu-bmad
 project_key: NOKEY
 tracking_system: file-system
@@ -55,10 +55,10 @@ development_status:
   1-4-termin-detailansicht-eigene-termine: done
   epic-1-retrospective: optional
 
-  epic-2: backlog
-  2-1-google-kalender-verbinden-importieren: backlog
-  2-2-outlook-kalender-verbinden-importieren: backlog
-  2-3-admin-sync-uebersicht: backlog
+  epic-2: done
+  2-1-google-kalender-verbinden-importieren: done
+  2-2-outlook-kalender-verbinden-importieren: done
+  2-3-admin-sync-uebersicht: done
   epic-2-retrospective: optional
 
   epic-3: backlog

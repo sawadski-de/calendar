@@ -21,6 +21,9 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Domain\Domain.csproj" />
     <ProjectReference Include="..\..\src\Application\Application.csproj" />
+    <!-- AesGcmTokenEncryptionTests needs the concrete Infrastructure implementation — it has no
+         EF Core/DB dependency itself, so it's still a true unit test despite the reference. -->
+    <ProjectReference Include="..\..\src\Infrastructure\Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

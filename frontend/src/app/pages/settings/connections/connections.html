@@ -1,0 +1,69 @@
+<div class="connections-page">
+  <nav class="connections-page__crumb text-caption">
+    <a routerLink="/">{{ 'settings.connections.crumbHome' | transloco }}</a>
+    <span> · </span>
+    <span>{{ 'settings.connections.crumbConnections' | transloco }}</span>
+  </nav>
+
+  <h1 class="text-heading">{{ 'settings.connections.heading' | transloco }}</h1>
+  <p class="connections-page__sub text-body">{{ 'settings.connections.sub' | transloco }}</p>
+
+  @if (callbackNotice(); as notice) {
+    @if (notice.kind === 'connected') {
+      <p class="connections-page__notice connections-page__notice--ok text-body" role="status">
+        {{ 'settings.connections.connectedNotice' | transloco: { provider: notice.provider } }}
+      </p>
+    } @else {
+      <p class="connections-page__notice connections-page__notice--error text-body" role="status">
+        {{ 'settings.connections.error.' + notice.errorCode | transloco }}
+      </p>
+    }
+  }
+
+  <div class="connections">
+    @for (connection of connections(); track connection.provider) {
+      <div class="conn-row" [class.conn-row--error]="connection.hasError">
+        <div class="conn-top">
+          <div class="conn-id">
+            <span class="conn-id__name text-label">{{ displayName(connection.provider) }} Calendar</span>
+          </div>
+          @if (connection.hasError) {
+            <span class="status-tag status-tag--err text-label-caps">{{ 'settings.connections.statusError' | transloco }}</span>
+          } @else if (connection.connected) {
+            <span class="status-tag status-tag--ok text-label-caps">{{ 'settings.connections.statusConnected' | transloco }}</span>
+          } @else {
+            <span class="status-tag text-label-caps">{{ 'settings.connections.statusNotConnected' | transloco }}</span>
+          }
+        </div>
+
+        <div aria-live="polite" class="sync-line text-caption" [class.sync-line--err]="connection.hasError">
+          @if (connection.hasError) {
+            {{ 'settings.connections.error.' + connection.errorCode | transloco }}
+          } @else if (connection.lastSuccessfulSyncAt) {
+            {{ 'settings.connections.lastSync' | transloco: syncLineParams(connection) }}
+          } @else {
+            {{ 'settings.connections.neverSynced' | transloco }}
+          }
+        </div>
+
+        @if (connection.hasError) {
+          <div class="error-box">
+            <p class="text-body">{{ 'settings.connections.error.' + connection.errorCode | transloco }}</p>
+          </div>
+        }
+
+        <div class="conn-actions">
+          @if (!connection.connected) {
+            <a class="ghost-btn ghost-btn--primary" [href]="authorizeUrl(connection.provider)">
+              {{ 'settings.connections.connect' | transloco }}
+            </a>
+          } @else if (connection.hasError) {
+            <a class="ghost-btn ghost-btn--primary" [href]="authorizeUrl(connection.provider)">
+              {{ 'settings.connections.retry' | transloco }}
+            </a>
+          }
+        </div>
+      </div>
+    }
+  </div>
+</div>

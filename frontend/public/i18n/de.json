@@ -10,7 +10,9 @@
     "genericError": "Anmeldung fehlgeschlagen. Bitte überprüfe deine Zugangsdaten."
   },
   "nav": {
-    "logout": "Abmelden"
+    "logout": "Abmelden",
+    "settings": "Einstellungen",
+    "syncOverview": "Sync-Übersicht"
   },
   "calendar": {
     "viewMonth": "Monat",
@@ -21,6 +23,9 @@
     "next": "Weiter",
     "today": "Heute",
     "empty": "Du hast noch keine Termine.",
+    "emptyNoConnectionPrefix": "Noch keine Termine — verbinde deinen Kalender in den ",
+    "emptyNoConnectionLink": "Einstellungen",
+    "emptyNoConnectionSuffix": ", wann immer du bereit bist.",
     "createButton": "+ Neuer Termin",
     "createHeading": "Neuer Termin",
     "createFieldTitle": "Titel",
@@ -49,5 +54,44 @@
     "groupLabel": "Sprache",
     "de": "DE",
     "en": "EN"
+  },
+  "settings": {
+    "connections": {
+      "crumbHome": "Kalender",
+      "crumbConnections": "Kalenderverbindungen",
+      "heading": "Kalenderverbindungen",
+      "sub": "Verbinde deinen Outlook- oder Google-Kalender, damit deine Termine automatisch importiert werden. Die Synchronisierung läuft alle paar Minuten in eine Richtung — es wird nichts in dein Konto zurückgeschrieben.",
+      "statusConnected": "Verbunden",
+      "statusNotConnected": "Nicht verbunden",
+      "statusError": "Verbindungsfehler",
+      "connect": "Verbinden",
+      "retry": "Erneut versuchen",
+      "connectedNotice": "{{provider}}-Kalender erfolgreich verbunden.",
+      "lastSync": "Zuletzt synchronisiert vor {{minutes}} Min.",
+      "neverSynced": "Kein erfolgreicher Sync bisher",
+      "error": {
+        "consent_denied": "Verbindung abgelehnt — der Zustimmung zum Kalenderzugriff wurde nicht erteilt.",
+        "tenant_blocked": "Verbindung von deinem Unternehmen blockiert — bitte den IT-Admin kontaktieren.",
+        "code_missing": "Verbindung fehlgeschlagen — bitte erneut versuchen.",
+        "no_refresh_token_returned": "Verbindung fehlgeschlagen — bitte erneut versuchen.",
+        "invalid_state": "Verbindung fehlgeschlagen — bitte erneut versuchen.",
+        "oauth_error": "Verbindung fehlgeschlagen — bitte erneut versuchen.",
+        "code_exchange_failed": "Verbindung fehlgeschlagen — bitte erneut versuchen.",
+        "token_refresh_failed": "Synchronisierung fehlgeschlagen — bitte Verbindung erneut herstellen.",
+        "provider_error": "Synchronisierung derzeit nicht möglich — wird automatisch erneut versucht."
+      }
+    }
+  },
+  "admin": {
+    "syncOverview": {
+      "crumbHome": "Kalender",
+      "crumbOverview": "Sync-Übersicht",
+      "heading": "Sync-Übersicht",
+      "columnPerson": "Person",
+      "columnProvider": "Provider",
+      "columnStatus": "Status",
+      "columnLastSync": "Letzter Sync",
+      "forbidden": "Kein Zugriff — diese Seite ist nur für Admins."
+    }
   }
 }

@@ -28,6 +28,11 @@
   cursor: pointer;
 }
 
+.app-frame__settings {
+  color: var(--color-muted);
+  text-decoration: none;
+}
+
 .app-frame__main {
   padding: var(--space-6);
   display: flex;
