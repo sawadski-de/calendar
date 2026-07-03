@@ -1,4 +1,5 @@
 import { Component, computed, input, output } from '@angular/core';
+import { Activatable } from '../../../../shared/activatable/activatable';
 import { Appointment } from '../appointment.model';
 import { dateKey, getMonthGridDays, groupByDay } from '../date-utils';
 
@@ -14,6 +15,7 @@ const MAX_TITLES_PER_CELL = 2;
 @Component({
   selector: 'app-month-view',
   standalone: true,
+  imports: [Activatable],
   templateUrl: './month-view.html',
   styleUrl: './month-view.css',
 })

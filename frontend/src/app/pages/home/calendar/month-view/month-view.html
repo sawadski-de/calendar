@@ -5,11 +5,8 @@
       @for (appointment of cell.appointments.slice(0, maxTitlesPerCell); track appointment.id) {
         <span
           class="month-view__title text-caption"
-          tabindex="0"
-          role="button"
-          (click)="activateAppointment(appointment.id)"
-          (keydown.enter)="activateAppointment(appointment.id)"
-          (keydown.space)="activateAppointment(appointment.id)"
+          appActivatable
+          (activate)="activateAppointment(appointment.id)"
         >{{ appointment.title }}</span>
       }
       @if (cell.appointments.length > maxTitlesPerCell) {

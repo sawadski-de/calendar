@@ -31,6 +31,7 @@
     "createFieldAttendees": "Attendees (optional)",
     "createTitleRequired": "Please enter a title.",
     "createInvalidTimeRange": "The end time must be after the start time.",
+    "createAttendeeNotFound": "At least one attendee is no longer available. Please check your selection.",
     "createCancel": "Cancel",
     "createSave": "Save",
     "addAttendee": "+ Add attendee",
@@ -41,7 +42,8 @@
     "detailFieldTime": "Time",
     "detailFieldStatus": "Status",
     "detailFieldAttendees": "Attendees",
-    "detailNoAttendees": "No attendees"
+    "detailNoAttendees": "No attendees",
+    "detailLoadError": "Could not load this appointment."
   },
   "languageSwitcher": {
     "groupLabel": "Language",

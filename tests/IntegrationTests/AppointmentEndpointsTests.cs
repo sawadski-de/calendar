@@ -134,6 +134,28 @@ public class AppointmentEndpointsTests(PostgresContainerFixture postgres)
     }
 
     [Fact]
+    public async Task Post_with_a_missing_attendeePersonIds_field_creates_the_appointment_instead_of_500ing()
+    {
+        // Regression: System.Text.Json binds a missing JSON property to null regardless of the
+        // record's non-nullable C# type — attendeePersonIds must be treated as "no attendees", not crash.
+        var (factory, client, _) = await CreateAuthenticatedContextAsync();
+        using var f = factory;
+        using var c = client;
+
+        var start = new DateTimeOffset(2026, 7, 6, 9, 0, 0, TimeSpan.Zero);
+        var response = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            title = "No attendee field at all",
+            startUtc = start,
+            endUtc = start.AddMinutes(30),
+        });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(nameof(AvailabilityStatus.Unterbrechbar), body.GetProperty("status").GetString());
+    }
+
+    [Fact]
     public async Task Post_rejects_a_blank_title()
     {
         var (factory, client, _) = await CreateAuthenticatedContextAsync();

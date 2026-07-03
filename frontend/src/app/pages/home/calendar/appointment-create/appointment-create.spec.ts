@@ -124,6 +124,28 @@ describe('AppointmentCreate', () => {
     expect(saved).toEqual(created);
   });
 
+  it('shows an inline error when the backend rejects with attendee-not-found (Story 1.4 code review)', () => {
+    fixture.detectChanges();
+    flushRoster();
+
+    titleInput().value = 'Kurzabstimmung';
+    titleInput().dispatchEvent(new Event('input'));
+    dateInput().value = '2026-07-02';
+    dateInput().dispatchEvent(new Event('input'));
+    startInput().value = '09:00';
+    startInput().dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    fixture.nativeElement.querySelector('.appointment-create__button--primary').click();
+
+    httpMock
+      .expectOne('/api/appointments')
+      .flush({ code: 'attendee-not-found' }, { status: 400, statusText: 'Bad Request' });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.appointment-create__error')).not.toBeNull();
+  });
+
   it('emits cancelled with no HTTP call when Esc is pressed', () => {
     fixture.detectChanges();
     flushRoster();

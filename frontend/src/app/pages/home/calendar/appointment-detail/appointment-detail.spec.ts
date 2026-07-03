@@ -81,6 +81,34 @@ describe('AppointmentDetailPopover', () => {
     expect(closedCount).toBe(1);
   });
 
+  it('shows an error message and a close button instead of a blank overlay on a 404 (Story 1.4 code review)', () => {
+    fixture.detectChanges();
+    httpMock.expectOne('/api/appointments/a1').flush(
+      { code: 'appointment-not-found' },
+      { status: 404, statusText: 'Not Found' }
+    );
+    fixture.detectChanges();
+
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.appointment-detail__close')).not.toBeNull();
+    expect(el.textContent?.trim().length).toBeGreaterThan(0);
+  });
+
+  it('closes via the close button after a load error', () => {
+    fixture.detectChanges();
+    httpMock.expectOne('/api/appointments/a1').flush(
+      { code: 'appointment-not-found' },
+      { status: 404, statusText: 'Not Found' }
+    );
+    fixture.detectChanges();
+
+    let closedCount = 0;
+    fixture.componentInstance.closed.subscribe(() => closedCount++);
+    (fixture.nativeElement.querySelector('.appointment-detail__close') as HTMLElement).click();
+
+    expect(closedCount).toBe(1);
+  });
+
   it('does not emit closed for a click inside the panel', () => {
     fixture.detectChanges();
     httpMock.expectOne('/api/appointments/a1').flush(detail);

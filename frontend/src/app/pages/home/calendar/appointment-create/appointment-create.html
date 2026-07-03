@@ -65,6 +65,9 @@
     <div class="appointment-create__field">
       <label class="text-label-caps">{{ 'calendar.createFieldAttendees' | transloco }}</label>
       <app-attendee-picker [(selectedPersonIds)]="attendeePersonIds" />
+      @if (attendeeError()) {
+        <span class="appointment-create__error">{{ 'calendar.createAttendeeNotFound' | transloco }}</span>
+      }
     </div>
 
     <div class="appointment-create__footer">

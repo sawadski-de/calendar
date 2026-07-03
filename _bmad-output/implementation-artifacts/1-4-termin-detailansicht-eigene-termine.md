@@ -4,7 +4,7 @@ baseline_commit: e13032eb838a8426bd2d64d9b93d15ae20badb94
 
 # Story 1.4: Termin-Detailansicht (eigene Termine)
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -133,24 +133,29 @@ Claude Sonnet 5 (claude-sonnet-5)
 
 **Backend — `src/Infrastructure`**
 - `Appointments/AppointmentViewService.cs` (modified — implementation, `Include(a => a.Attendees)`)
+- `Appointments/AppointmentCreationService.cs` (modified; code-review fix — null-guard `attendeePersonIds` before `Distinct()`)
 
 **Backend — `src/Api`**
 - `Contracts/AppointmentContracts.cs` (modified — `AttendeeSummaryResponse`, `AppointmentDetailResponse`)
 - `Endpoints/AppointmentEndpoints.cs` (modified — `GET /api/appointments/{id:guid}`)
 
 **Backend tests**
-- `tests/IntegrationTests/AppointmentEndpointsTests.cs` (modified — 4 new detail-endpoint tests)
+- `tests/IntegrationTests/AppointmentEndpointsTests.cs` (modified — 4 new detail-endpoint tests; +1 code-review regression test for a missing `attendeePersonIds` field)
 
 **Frontend — `frontend/src/app`**
 - `pages/home/calendar/calendar.service.ts` (modified — `getAppointmentDetail`, `AppointmentDetail`/`AttendeeSummary`)
-- `pages/home/calendar/appointment-detail/{appointment-detail.ts,.html,.css,.spec.ts}` (new)
-- `pages/home/calendar/calendar-column/{calendar-column.ts,.html,.css}` (modified — clickable/focusable appointment blocks); `calendar-column.spec.ts` (modified — new activation + regression tests)
-- `pages/home/calendar/month-view/{month-view.ts,.html,.css}` (modified — clickable/focusable titles); `month-view.spec.ts` (new)
+- `pages/home/calendar/date-utils.ts` (modified; code-review fix — shared `formatTime`, deduplicated from `calendar-column`/`appointment-detail`)
+- `pages/home/calendar/appointment-detail/{appointment-detail.ts,.html,.css,.spec.ts}` (new; code-review fix — 404 error state instead of a blank overlay, +2 regression tests)
+- `pages/home/calendar/appointment-create/{appointment-create.ts,.html}` (modified; code-review fix — handles `attendee-not-found`, +1 regression test)
+- `pages/home/calendar/calendar-column/{calendar-column.ts,.html,.css}` (modified — clickable/focusable appointment blocks; code-review fix — uses shared `Activatable` directive); `calendar-column.spec.ts` (modified — new activation + regression tests)
+- `pages/home/calendar/month-view/{month-view.ts,.html,.css}` (modified — clickable/focusable titles; code-review fix — uses shared `Activatable` directive); `month-view.spec.ts` (new)
+- `shared/activatable/{activatable.ts,.spec.ts}` (new; code-review fix — extracted from three copy-pasted tabindex/role/click/keydown blocks, fixes missing `preventDefault` on Space)
 - `pages/home/home.ts`, `home.html` (modified — detail-popover wiring)
 - `pages/home/home.spec.ts` (modified — new tests)
 - `testing/transloco-testing.ts` (modified — new i18n test keys)
-- `public/i18n/{de,en}.json` (modified — new `calendar.detail*` keys)
+- `public/i18n/{de,en}.json` (modified — new `calendar.detail*`/`calendar.createAttendeeNotFound` keys)
 
 ### Change Log
 
 - 2026-07-03: Story 1.4 fully implemented (Tasks 1–4) — `GET /api/appointments/{id}` (own-appointment detail with attendee emails, 404 collapsing "doesn't exist" and "isn't mine" into one response), and the full frontend flow: clickable/focusable appointment renderings in both `calendar-column` (Week/Day) and `month-view` (Month), a read-only detail popover reusing Story 1.3's `focus-trap` and `status-badge`. All 4 ACs verified; 45 backend + 58 frontend tests passing, both builds clean. Status → review.
+- 2026-07-03: Addressed workflow-backed code-review findings (high effort, 7 verified). Fixed: (1) `CreateAppointmentRequest.AttendeePersonIds` could deserialize to `null` despite its non-nullable type (System.Text.Json ignores the annotation for a missing JSON property), crashing `Distinct()` with an unhandled 500 — null-guarded, regression test added. (2) `appointment-create` silently swallowed the `attendee-not-found` error code with no user feedback — now shows an inline message. (3) `appointment-detail` had no error handler at all for its 404, leaving a blank overlay — now shows an error message with a close button. (4/5) three near-identical `tabindex`/`role="button"`/click+keydown blocks (two in `calendar-column`, one in `month-view`) were extracted into a shared `shared/activatable` directive, which also fixes a missing `event.preventDefault()` on Space that caused the page to scroll on keyboard activation. (6) a duplicated `formatTime` helper was moved into `date-utils.ts`. One finding — `GET /api/appointments/{id}` loading the full roster via `GetAllAsync` to resolve a handful of attendee emails — was investigated and left as-is: it's the same "small team, one roster fetch, no N+1" pattern this codebase deliberately adopted in Story 1.3's own code review (see that story's Dev Notes), not a new defect; introducing a second, differently-shaped lookup method here would be inconsistent rather than an improvement at this app's explicit 5–10 person team scale. 46/46 backend tests and 67/67 frontend tests passing after fixes (up from 45/58).

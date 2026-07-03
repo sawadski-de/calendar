@@ -45,6 +45,7 @@ export class AppointmentCreate implements OnInit {
 
   readonly titleError = signal(false);
   readonly timeRangeError = signal(false);
+  readonly attendeeError = signal(false);
 
   readonly endTimeLabel = computed(() => {
     const end = this.composeEnd();
@@ -67,6 +68,7 @@ export class AppointmentCreate implements OnInit {
     if (!this.title().trim()) {
       this.titleError.set(true);
       this.timeRangeError.set(false);
+      this.attendeeError.set(false);
       this.titleInputRef?.nativeElement.focus();
       return;
     }
@@ -76,11 +78,13 @@ export class AppointmentCreate implements OnInit {
     if (!start || !end || end <= start) {
       this.timeRangeError.set(true);
       this.titleError.set(false);
+      this.attendeeError.set(false);
       return;
     }
 
     this.titleError.set(false);
     this.timeRangeError.set(false);
+    this.attendeeError.set(false);
 
     this.calendarService
       .createAppointment({
@@ -98,6 +102,9 @@ export class AppointmentCreate implements OnInit {
             this.titleInputRef?.nativeElement.focus();
           } else if (code === 'invalid-time-range') {
             this.timeRangeError.set(true);
+          } else if (code === 'attendee-not-found') {
+            // Rare race — a selected attendee left the roster between picking and saving.
+            this.attendeeError.set(true);
           }
         },
       });

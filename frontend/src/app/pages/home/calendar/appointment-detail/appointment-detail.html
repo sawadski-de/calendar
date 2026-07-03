@@ -40,6 +40,18 @@
           <span class="appointment-detail__value text-body">{{ 'calendar.detailNoAttendees' | transloco }}</span>
         }
       </div>
+    } @else if (loadError()) {
+      <div class="appointment-detail__head">
+        <span class="appointment-detail__value text-body">{{ 'calendar.detailLoadError' | transloco }}</span>
+        <button
+          type="button"
+          class="appointment-detail__close"
+          (click)="close()"
+          [attr.aria-label]="'calendar.detailClose' | transloco"
+        >
+          ✕
+        </button>
+      </div>
     }
   </div>
 </div>

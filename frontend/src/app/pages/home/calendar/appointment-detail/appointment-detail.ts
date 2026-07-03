@@ -2,11 +2,8 @@ import { Component, OnInit, computed, inject, input, output, signal } from '@ang
 import { TranslocoPipe } from '@jsverse/transloco';
 import { FocusTrap } from '../../../../shared/focus-trap/focus-trap';
 import { AppointmentDetail, CalendarService } from '../calendar.service';
+import { formatTime } from '../date-utils';
 import { StatusBadge } from '../status-badge/status-badge';
-
-function formatTime(date: Date): string {
-  return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-}
 
 /**
  * Read-only detail popover for an own appointment (Story 1.4). Shares the exact popover shape/
@@ -28,6 +25,7 @@ export class AppointmentDetailPopover implements OnInit {
   readonly closed = output<void>();
 
   readonly detail = signal<AppointmentDetail | null>(null);
+  readonly loadError = signal(false);
 
   readonly dateLabel = computed(() => {
     const detail = this.detail();
@@ -51,7 +49,13 @@ export class AppointmentDetailPopover implements OnInit {
   });
 
   ngOnInit(): void {
-    this.calendarService.getAppointmentDetail(this.appointmentId()).subscribe((detail) => this.detail.set(detail));
+    this.calendarService.getAppointmentDetail(this.appointmentId()).subscribe({
+      next: (detail) => this.detail.set(detail),
+      // The endpoint 404s identically whether the appointment was deleted or never belonged to the
+      // caller (no existence leak, see backend Dev Notes) — either way, tell the user rather than
+      // leaving a blank overlay.
+      error: () => this.loadError.set(true),
+    });
   }
 
   close(): void {

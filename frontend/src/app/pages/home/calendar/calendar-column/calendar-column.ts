@@ -1,7 +1,8 @@
 import { Component, computed, input, output } from '@angular/core';
+import { Activatable } from '../../../../shared/activatable/activatable';
 import { StatusBadge } from '../status-badge/status-badge';
 import { Appointment } from '../appointment.model';
-import { addDays, startOfDay } from '../date-utils';
+import { addDays, formatTime, startOfDay } from '../date-utils';
 import { computeOverlapLayout, OverlapLayoutItem } from '../overlap-layout';
 
 export const HOUR_HEIGHT_PX = 48;
@@ -28,7 +29,7 @@ interface TimeSlot {
 @Component({
   selector: 'app-calendar-column',
   standalone: true,
-  imports: [StatusBadge],
+  imports: [StatusBadge, Activatable],
   templateUrl: './calendar-column.html',
   styleUrl: './calendar-column.css',
 })
@@ -99,8 +100,4 @@ export class CalendarColumn {
   activateAppointment(appointmentId: string): void {
     this.appointmentActivated.emit(appointmentId);
   }
-}
-
-function formatTime(date: Date): string {
-  return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 }
