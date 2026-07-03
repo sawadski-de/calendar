@@ -249,6 +249,70 @@ public class AppointmentEndpointsTests(PostgresContainerFixture postgres)
     }
 
     [Fact]
+    public async Task A_row_relying_on_the_status_column_default_reads_back_as_a_valid_enum_value()
+    {
+        // Regression: the AddAppointmentStatusAndAttendees migration's ADD COLUMN must backfill
+        // pre-existing rows with a valid AvailabilityStatus member (not an empty string, which the
+        // HasConversion<string>() enum mapping cannot parse on the next read).
+        var (factory, client, personId) = await CreateAuthenticatedContextAsync();
+        using var f = factory;
+        using var c = client;
+
+        var appointmentId = Guid.NewGuid();
+        var day = new DateTimeOffset(2026, 7, 6, 9, 0, 0, TimeSpan.Zero);
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            // Omits is_all_day/status entirely so the row relies on the column defaults, simulating a
+            // pre-existing row backfilled by the migration rather than written through EF's mapping.
+            await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                $"INSERT INTO appointments (id, person_id, title, start_utc, end_utc) VALUES ({appointmentId}, {personId}, {"Legacy"}, {day}, {day.AddMinutes(30)})");
+        }
+
+        var response = await client.GetFromJsonAsync<JsonElement>(
+            $"/api/appointments?from={Uri.EscapeDataString(day.ToString("O"))}&to={Uri.EscapeDataString(day.AddDays(1).ToString("O"))}");
+
+        var entry = response.EnumerateArray().Single();
+        Assert.Equal(nameof(AvailabilityStatus.Unterbrechbar), entry.GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task Post_deduplicates_a_repeated_attendee_id_instead_of_erroring()
+    {
+        var (factory, client, _) = await CreateAuthenticatedContextAsync();
+        using var f = factory;
+        using var c = client;
+
+        var createPerson = await client.PostAsJsonAsync("/api/admin/persons", new
+        {
+            email = $"dup-{Guid.NewGuid():N}@test.local",
+            password = "Member#12345",
+            role = "Member",
+        });
+        createPerson.EnsureSuccessStatusCode();
+        var attendeeId = (await createPerson.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+
+        var start = new DateTimeOffset(2026, 7, 6, 9, 0, 0, TimeSpan.Zero);
+        var response = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            title = "Repeated attendee",
+            startUtc = start,
+            endUtc = start.AddMinutes(30),
+            attendeePersonIds = new[] { attendeeId, attendeeId },
+        });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var appointmentId = body.GetProperty("id").GetGuid();
+
+        using var scope = factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var attendeeRowCount = await dbContext.Attendees.CountAsync(a => a.AppointmentId == appointmentId);
+        Assert.Equal(1, attendeeRowCount);
+    }
+
+    [Fact]
     public async Task Two_native_appointments_for_the_same_person_can_coexist_under_the_partial_unique_index()
     {
         // AD-7: Provider/ProviderEventId are both NULL for native appointments — the partial index

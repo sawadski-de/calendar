@@ -214,12 +214,12 @@ Claude Sonnet 5 (claude-sonnet-5)
 - `Accounts/IPersonRepository.cs` (modified — `GetAllAsync`)
 
 **Backend — `src/Infrastructure`**
-- `Appointments/AppointmentCreationService.cs` (new)
+- `Appointments/AppointmentCreationService.cs` (new; code-review fix — dedupe attendee ids, single-roster validation)
 - `Appointments/AppointmentRepository.cs` (new)
 - `Accounts/PersonRepository.cs` (modified — `GetAllAsync`)
-- `Persistence/ApplicationDbContext.cs` (modified — `Status`/`IsAllDay`/`Attendees` mapping)
-- `Persistence/Migrations/20260703172204_AddAppointmentStatusAndAttendees.cs` + `.Designer.cs` (new)
-- `Persistence/Migrations/ApplicationDbContextModelSnapshot.cs` (modified)
+- `Persistence/ApplicationDbContext.cs` (modified — `Status`/`IsAllDay`/`Attendees` mapping; code-review fix — `HasDefaultValue(AvailabilityStatus.Unterbrechbar)`)
+- `Persistence/Migrations/20260703172204_AddAppointmentStatusAndAttendees.cs` + `.Designer.cs` (new; code-review fix — `status` column default corrected from `""` to `"Unterbrechbar"`)
+- `Persistence/Migrations/ApplicationDbContextModelSnapshot.cs` (modified; code-review fix — matching default)
 
 **Backend — `src/Api`**
 - `Contracts/AppointmentContracts.cs` (modified — `CreateAppointmentRequest`, `Status` on response)
@@ -231,7 +231,7 @@ Claude Sonnet 5 (claude-sonnet-5)
 **Backend tests**
 - `tests/UnitTests/Domain/StatusHeuristicServiceTests.cs` (new)
 - `tests/UnitTests/Application/FakePersonRepository.cs` (modified — `GetAllAsync`)
-- `tests/IntegrationTests/AppointmentEndpointsTests.cs` (modified — 5 new POST tests + status-on-GET test)
+- `tests/IntegrationTests/AppointmentEndpointsTests.cs` (modified — 5 new POST tests + status-on-GET test; +2 code-review regression tests: status-column-default, duplicate-attendee-dedup)
 - `tests/IntegrationTests/PersonEndpointsTests.cs` (new)
 
 **Frontend — `frontend/src/app`**
@@ -251,3 +251,4 @@ Claude Sonnet 5 (claude-sonnet-5)
 ### Change Log
 
 - 2026-07-03: Story 1.3 fully implemented (Tasks 1–8) — `AvailabilityStatus`/`Attendee` domain models, `StatusHeuristicService` (AD-4/AD-5, all boundary rules), native appointment write path (`POST /api/appointments`), team roster endpoint (`GET /api/persons`), and the full frontend flow: empty-slot and button create entry points, focus-trapped create form with validation, form-scoped attendee picker, and status badges rendered in the calendar column. All 11 ACs verified; 39 backend + 44 frontend tests passing, both builds clean. Status → review.
+- 2026-07-03: Addressed workflow-backed code-review findings (high effort, 7 verified). Fixed: (1) `AddAppointmentStatusAndAttendees` migration backfilled the new `status` column with `""` for any pre-existing row, which the `AvailabilityStatus` string conversion cannot parse on read (would 500 the next `GET /api/appointments`) — changed the column default to `"Unterbrechbar"` in the migration, its Designer file, `ApplicationDbContextModelSnapshot.cs`, and the live model (`HasDefaultValue`), plus a regression test inserting a row via raw SQL that relies on the default. (2) A duplicate id in `attendeePersonIds` bypassed validation and hit the new `(AppointmentId, PersonId)` unique index as an unhandled 500 instead of a clean response — `AppointmentCreationService` now dedupes via `Distinct()` before attaching attendees, with a regression test. (3) Folded in the related N+1 cleanup: attendee-existence validation now uses one `IPersonRepository.GetAllAsync()` roster fetch instead of one `GetByIdAsync` call per attendee. One review finding (heuristic rule order — short-duration check before the all-day check) was investigated and rejected: it exactly matches AD-5's literal specified order in the architecture spine, not a defect. 41/41 backend tests passing after fixes (up from 39).

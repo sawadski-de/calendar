@@ -25,17 +25,22 @@ public class AppointmentCreationService(IPersonRepository personRepository, IApp
             return new AppointmentCreationResult(false, null, "invalid-time-range");
         }
 
-        foreach (var attendeePersonId in attendeePersonIds)
+        // A duplicate id in the request (double-submit, buggy client) must not reach AddAttendee twice —
+        // the unique (AppointmentId, PersonId) index would turn that into an unhandled 500 instead of a
+        // clean validation response. Distinct() here also lets attendee-existence be checked against a
+        // single roster fetch instead of one DB round-trip per attendee.
+        var distinctAttendeePersonIds = attendeePersonIds.Distinct().ToList();
+
+        var roster = await personRepository.GetAllAsync(cancellationToken);
+        var rosterIds = roster.Select(p => p.Id).ToHashSet();
+        if (distinctAttendeePersonIds.Any(id => !rosterIds.Contains(id)))
         {
-            if (await personRepository.GetByIdAsync(attendeePersonId, cancellationToken) is null)
-            {
-                return new AppointmentCreationResult(false, null, "attendee-not-found");
-            }
+            return new AppointmentCreationResult(false, null, "attendee-not-found");
         }
 
         // Native appointment: Provider/ProviderEventId both NULL (AD-7).
         var appointment = new Appointment(Guid.NewGuid(), ownerId, title, startUtc, endUtc);
-        foreach (var attendeePersonId in attendeePersonIds)
+        foreach (var attendeePersonId in distinctAttendeePersonIds)
         {
             appointment.AddAttendee(attendeePersonId);
         }

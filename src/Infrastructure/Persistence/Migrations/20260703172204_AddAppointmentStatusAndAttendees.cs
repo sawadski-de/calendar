@@ -23,7 +23,7 @@ namespace Infrastructure.Persistence.Migrations
                 table: "appointments",
                 type: "text",
                 nullable: false,
-                defaultValue: "");
+                defaultValue: "Unterbrechbar");
 
             migrationBuilder.CreateTable(
                 name: "attendees",

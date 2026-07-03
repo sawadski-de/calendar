@@ -37,7 +37,10 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(a => a.StartUtc).IsRequired();
             entity.Property(a => a.EndUtc).IsRequired();
             entity.Property(a => a.IsAllDay).IsRequired();
-            entity.Property(a => a.Status).HasConversion<string>().IsRequired();
+            // Explicit default so a future ADD COLUMN backfills any pre-existing row with a valid
+            // enum member (the string conversion has no "" member) instead of EF's CLR-default blank
+            // string, which would throw on the very next read of that row.
+            entity.Property(a => a.Status).HasConversion<string>().IsRequired().HasDefaultValue(AvailabilityStatus.Unterbrechbar);
             entity.HasOne<Person>().WithMany().HasForeignKey(a => a.PersonId);
 
             // Backing field (_attendees) is picked up by EF Core's default convention — no extra

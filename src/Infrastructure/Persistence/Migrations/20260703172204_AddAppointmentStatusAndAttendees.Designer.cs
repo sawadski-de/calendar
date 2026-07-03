@@ -59,7 +59,8 @@ namespace Infrastructure.Persistence.Migrations
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasColumnName("status");
+                        .HasColumnName("status")
+                        .HasDefaultValue("Unterbrechbar");
 
                     b.Property<string>("Title")
                         .IsRequired()
