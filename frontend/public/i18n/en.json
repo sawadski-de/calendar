@@ -20,7 +20,22 @@
     "previous": "Previous",
     "next": "Next",
     "today": "Today",
-    "empty": "You don't have any appointments yet."
+    "empty": "You don't have any appointments yet.",
+    "createButton": "+ New appointment",
+    "createHeading": "New appointment",
+    "createFieldTitle": "Title",
+    "createFieldDate": "Date",
+    "createFieldStart": "Start time",
+    "createFieldDuration": "Duration",
+    "createFieldEnd": "End",
+    "createFieldAttendees": "Attendees (optional)",
+    "createTitleRequired": "Please enter a title.",
+    "createInvalidTimeRange": "The end time must be after the start time.",
+    "createCancel": "Cancel",
+    "createSave": "Save",
+    "addAttendee": "+ Add attendee",
+    "statusInterruptible": "Interruptible",
+    "statusDnd": "Do not disturb"
   },
   "languageSwitcher": {
     "groupLabel": "Language",

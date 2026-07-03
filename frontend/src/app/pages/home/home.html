@@ -33,6 +33,9 @@
         </button>
       </div>
       <app-view-switcher [active]="viewType()" (activeChange)="setViewType($event)" />
+      <button type="button" class="calendar-toolbar__create" (click)="openCreateBlank()">
+        {{ 'calendar.createButton' | transloco }}
+      </button>
     </div>
 
     @if (isEmpty()) {
@@ -51,7 +54,11 @@
             </div>
             <div class="calendar-grid__columns">
               @for (day of weekDays(); track day.getTime()) {
-                <app-calendar-column [date]="day" [appointments]="appointmentsFor(day)" />
+                <app-calendar-column
+                  [date]="day"
+                  [appointments]="appointmentsFor(day)"
+                  (slotActivated)="openCreateFromSlot($event)"
+                />
               }
             </div>
           </div>
@@ -64,11 +71,23 @@
               }
             </div>
             <div class="calendar-grid__columns">
-              <app-calendar-column [date]="dayDate()" [appointments]="appointmentsFor(dayDate())" />
+              <app-calendar-column
+                [date]="dayDate()"
+                [appointments]="appointmentsFor(dayDate())"
+                (slotActivated)="openCreateFromSlot($event)"
+              />
             </div>
           </div>
         }
       }
     }
   </main>
+
+  @if (createFormOpen()) {
+    <app-appointment-create
+      [prefillStart]="createFormPrefillStart()"
+      (saved)="onAppointmentSaved($event)"
+      (cancelled)="onAppointmentCreateCancelled()"
+    />
+  }
 </div>

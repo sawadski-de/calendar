@@ -8,6 +8,7 @@ function appt(id: string, startHour: number, endHour: number): Appointment {
     title: id,
     startUtc: `${day}T${String(startHour).padStart(2, '0')}:00:00.000Z`,
     endUtc: `${day}T${String(endHour).padStart(2, '0')}:00:00.000Z`,
+    status: 'Unterbrechbar',
   };
 }
 
@@ -30,9 +31,9 @@ describe('computeOverlapLayout', () => {
 
   it('reuses a freed column for a later, non-overlapping-with-the-first appointment', () => {
     // a: 9-10, b: 9:30-10:30 (overlaps a), c: 10:30-11 (overlaps b, not a) -> c can reuse a's column
-    const a: Appointment = { id: 'a', title: 'a', startUtc: '2026-07-06T09:00:00.000Z', endUtc: '2026-07-06T10:00:00.000Z' };
-    const b: Appointment = { id: 'b', title: 'b', startUtc: '2026-07-06T09:30:00.000Z', endUtc: '2026-07-06T10:30:00.000Z' };
-    const c: Appointment = { id: 'c', title: 'c', startUtc: '2026-07-06T10:30:00.000Z', endUtc: '2026-07-06T11:00:00.000Z' };
+    const a: Appointment = { id: 'a', title: 'a', startUtc: '2026-07-06T09:00:00.000Z', endUtc: '2026-07-06T10:00:00.000Z', status: 'Unterbrechbar' };
+    const b: Appointment = { id: 'b', title: 'b', startUtc: '2026-07-06T09:30:00.000Z', endUtc: '2026-07-06T10:30:00.000Z', status: 'Unterbrechbar' };
+    const c: Appointment = { id: 'c', title: 'c', startUtc: '2026-07-06T10:30:00.000Z', endUtc: '2026-07-06T11:00:00.000Z', status: 'Unterbrechbar' };
 
     const result = computeOverlapLayout([a, b, c]);
 

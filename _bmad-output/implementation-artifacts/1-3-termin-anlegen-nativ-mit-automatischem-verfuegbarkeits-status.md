@@ -4,7 +4,7 @@ baseline_commit: 460391e23fdc5d057cb226e15d08700e6770fdac
 
 # Story 1.3: Termin anlegen (nativ) mit automatischem Verfügbarkeits-Status
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -59,38 +59,38 @@ so that mein Termin sofort sichtbar ist und Kollegen später einschätzen könne
   - [x] Add `POST /api/appointments` to `AppointmentEndpoints.cs` (same file, alongside the existing `GET`): `RequireAuthorization()`, resolve the caller's `PersonId` the same way the `GET` handler already does (`ClaimTypes.NameIdentifier`), call `IAppointmentCreationService`, map error codes to `ProblemResults.Problem(400, code, ...)` (reuse the exact codes from Task 2 — do not invent new ones or return free text, AD-13), success → `Results.Created($"/api/appointments/{id}", response)`.
   - [x] Add new `Api/Contracts/PersonContracts.cs`: `PersonResponse(Guid Id, string Email)`. Add new `Api/Endpoints/PersonEndpoints.cs` with `GET /api/persons` — `RequireAuthorization()` only (**not** `"Admin"`-gated like `/api/admin/*`; every team member needs the roster to pick attendees), returns `IPersonRepository.GetAllAsync` mapped to `PersonResponse[]`. **No display name in the response** — `Person` has only `Email`/`Role` (Story 1.1); adding a name field is out of scope here (see Task 5 note). Map it in `Program.cs` (`app.MapPersonEndpoints()`, next to the other `Map*Endpoints()` calls).
 
-- [ ] **Task 5: Frontend — model, service, status badge** (AC: 4, 5)
-  - [ ] Extend `frontend/src/app/pages/home/calendar/appointment.model.ts`: add `status: 'Unterbrechbar' | 'BitteNichtStoeren'` (the API's global `JsonStringEnumConverter`, already registered in `Program.cs`, serializes the enum as its member name string, not an integer — same convention as `role: "Member"` elsewhere in this codebase).
-  - [ ] Extend `calendar.service.ts`: `createAppointment(request): Observable<Appointment>` (`POST /api/appointments`); `getPersons(): Observable<{ id: string; email: string }[]>` (`GET /api/persons`).
-  - [ ] **Attendee display note (explicit, deliberate deviation from the mock):** `mockups/key-appointment-create.html`'s attendee chip shows a name ("Jonas Keller"). `Person` has no name field and this story does not add one — no AC or PRD requirement needs it, and inventing one would be speculative schema growth. The attendee picker and chips in this story display **email**, not a fabricated name. Flag this in your Completion Notes as a resolved, intentional scope decision — not a silent gap.
-  - [ ] Add `pages/home/calendar/status-badge/{status-badge.ts,.html,.css}` per `DESIGN.md components.status-badge`: input `status: Appointment['status']`; glow-fill background (`interruptible-fill` / `dnd-fill`), 3px **left-only** border in the full-strength color, `rounded.md`, an icon glyph + translated text label (`calendar.statusInterruptible` / `calendar.statusDnd`) using two **visually distinct glyph shapes** (not just two colors — Accessibility Floor, defense-in-depth for color-blind users). The text label must **never truncate or ellipsize** — this is a deliberate exception to `month-view`'s cell-title `text-overflow: ellipsis` convention from Story 1.2; do not copy that pattern here.
-  - [ ] Render the badge inside `calendar-column.html`'s existing own-appointment block (alongside the title/time already there). **Scope note:** AC 5 says "in my calendar **column**" (Day/Week) — Month view's compact per-day list is out of scope for the badge in this story; Story 1.2 already left Month view deliberately minimal and no AC here asks for a badge there.
+- [x] **Task 5: Frontend — model, service, status badge** (AC: 4, 5)
+  - [x] Extend `frontend/src/app/pages/home/calendar/appointment.model.ts`: add `status: 'Unterbrechbar' | 'BitteNichtStoeren'` (the API's global `JsonStringEnumConverter`, already registered in `Program.cs`, serializes the enum as its member name string, not an integer — same convention as `role: "Member"` elsewhere in this codebase).
+  - [x] Extend `calendar.service.ts`: `createAppointment(request): Observable<Appointment>` (`POST /api/appointments`); `getPersons(): Observable<{ id: string; email: string }[]>` (`GET /api/persons`).
+  - [x] **Attendee display note (explicit, deliberate deviation from the mock):** `mockups/key-appointment-create.html`'s attendee chip shows a name ("Jonas Keller"). `Person` has no name field and this story does not add one — no AC or PRD requirement needs it, and inventing one would be speculative schema growth. The attendee picker and chips in this story display **email**, not a fabricated name. Flag this in your Completion Notes as a resolved, intentional scope decision — not a silent gap.
+  - [x] Add `pages/home/calendar/status-badge/{status-badge.ts,.html,.css}` per `DESIGN.md components.status-badge`: input `status: Appointment['status']`; glow-fill background (`interruptible-fill` / `dnd-fill`), 3px **left-only** border in the full-strength color, `rounded.md`, an icon glyph + translated text label (`calendar.statusInterruptible` / `calendar.statusDnd`) using two **visually distinct glyph shapes** (not just two colors — Accessibility Floor, defense-in-depth for color-blind users). The text label must **never truncate or ellipsize** — this is a deliberate exception to `month-view`'s cell-title `text-overflow: ellipsis` convention from Story 1.2; do not copy that pattern here.
+  - [x] Render the badge inside `calendar-column.html`'s existing own-appointment block (alongside the title/time already there). **Scope note:** AC 5 says "in my calendar **column**" (Day/Week) — Month view's compact per-day list is out of scope for the badge in this story; Story 1.2 already left Month view deliberately minimal and no AC here asks for a badge there.
 
-- [ ] **Task 6: Frontend — appointment creation form + attendee picker** (AC: 1, 2, 3, 9, 10, 11)
-  - [ ] Add `shared/focus-trap/focus-trap.ts` (a directive or small injectable helper) — **this is the app's first popover-like UI**, so build the trap/restore behavior generically now rather than one-off inside the create form: while active, `Tab`/`Shift+Tab` cycle within the container's focusable elements only; on deactivate, focus returns to whatever element was active before it was applied. Story 1.4's detail popover will need the exact same behavior next — reuse this, don't duplicate it (see `_bmad-output/project-context.md`'s "don't reinvent" guardrail).
-  - [ ] Add `pages/home/calendar/attendee-picker/{attendee-picker.ts,.html,.css}` — a small, form-scoped picker: fetches the roster via `calendar.service.ts#getPersons`, renders selected attendees as chips (`{rounded.full}`, `surface` bg per `DESIGN.md`'s chip styling) with a "×" remove, plus a "+ Teilnehmer hinzufügen" trigger opening a filterable dropdown (type to filter by email; arrow keys move focus; `Enter` adds and keeps the dropdown open; `Esc` closes it). **Do not build this as Epic 3's full person-selector** (that component is for choosing which teammates' calendars to *view*, has no selection cap, and needs horizontal-scrolling chip rows for a different UI context) — this is a narrower, form-only field. Two-way bind selected `personId[]` to the parent form.
-  - [ ] Add `pages/home/calendar/appointment-create/{appointment-create.ts,.html,.css}` sharing the popover visual shape (`surface-2` bg, `border`, `rounded.md`, popover drop-shadow — `DESIGN.md` notes this form is closest to `components.appointment-detail-popover`'s shape). Fields: Title (text), Date (date), Start time + Duration (both user-editable; **End is computed/display-only** = Start + Duration — avoids a third independently-editable field that could disagree with the other two, unlike the 3-field visual in the mock), Attendees (the picker above).
+- [x] **Task 6: Frontend — appointment creation form + attendee picker** (AC: 1, 2, 3, 9, 10, 11)
+  - [x] Add `shared/focus-trap/focus-trap.ts` (a directive or small injectable helper) — **this is the app's first popover-like UI**, so build the trap/restore behavior generically now rather than one-off inside the create form: while active, `Tab`/`Shift+Tab` cycle within the container's focusable elements only; on deactivate, focus returns to whatever element was active before it was applied. Story 1.4's detail popover will need the exact same behavior next — reuse this, don't duplicate it (see `_bmad-output/project-context.md`'s "don't reinvent" guardrail).
+  - [x] Add `pages/home/calendar/attendee-picker/{attendee-picker.ts,.html,.css}` — a small, form-scoped picker: fetches the roster via `calendar.service.ts#getPersons`, renders selected attendees as chips (`{rounded.full}`, `surface` bg per `DESIGN.md`'s chip styling) with a "×" remove, plus a "+ Teilnehmer hinzufügen" trigger opening a filterable dropdown (type to filter by email; arrow keys move focus; `Enter` adds and keeps the dropdown open; `Esc` closes it). **Do not build this as Epic 3's full person-selector** (that component is for choosing which teammates' calendars to *view*, has no selection cap, and needs horizontal-scrolling chip rows for a different UI context) — this is a narrower, form-only field. Two-way bind selected `personId[]` to the parent form.
+  - [x] Add `pages/home/calendar/appointment-create/{appointment-create.ts,.html,.css}` sharing the popover visual shape (`surface-2` bg, `border`, `rounded.md`, popover drop-shadow — `DESIGN.md` notes this form is closest to `components.appointment-detail-popover`'s shape). Fields: Title (text), Date (date), Start time + Duration (both user-editable; **End is computed/display-only** = Start + Duration — avoids a third independently-editable field that could disagree with the other two, unlike the 3-field visual in the mock), Attendees (the picker above).
     - Inputs: an optional pre-fill `{ startUtc, endUtc }` (slot-triggered open) — when absent, all fields start empty (button-triggered open), satisfying AC 1 vs. AC 2.
     - Apply the focus trap from above while open. `Esc` or an outside click closes without saving and restores focus to the triggering element (AC 11) — the component needs to know what triggered it (a slot vs. the toolbar button) to restore focus correctly.
     - Validation on Save: title blank (trimmed) → inline error under the title field using `calendar.createTitleRequired`, focus moves to the title input, form stays open with all entered values intact (AC 10). Computed end ≤ start (duration ≤ 0) → inline error near the time fields using `calendar.createInvalidTimeRange`, same "stays open, values preserved" behavior (AC 9). These are **client-side pre-checks** for instant feedback; also handle the same two error codes if the backend still rejects (defense in depth, e.g. a race or a bug in the client check) — map codes to the same translated messages, never show raw backend `title`/`detail` text (AD-13).
     - On successful save: emit the created `Appointment`.
-  - [ ] Add a "+ Neuer Termin" ghost-pill button to `home.html`'s toolbar (`components.appointment-create-entry`: transparent bg, `border-interactive` outline, `rounded.full`) opening the form blank (AC 2).
-  - [ ] Add empty-time-slot targets to `calendar-column.ts`/`.html`: currently the column renders only the absolutely-positioned appointment overlay with no discrete slot elements. Add a focusable half-hour slot grid (48 slots across the existing `24 * HOUR_HEIGHT_PX` column) underneath the overlay; each empty slot gets `tabindex="0"` and `(dblclick)`/`(keydown.enter)`/`(keydown.space)` handlers emitting a `slotActivated` output with that slot's computed start `Date` (AC 1). **Reuse `positioned()`'s existing occupancy data to know which slots already have an appointment** — do not build a second, separately-maintained occupancy calculation; a slot covered by an appointment is not "empty" and must not fire the event.
-  - [ ] Wire it all in `Home`: own the create-form's open/closed state and which element triggered it; on `slotActivated` (from any visible column) or the toolbar button, open the form (pre-filled or blank respectively); on successful creation, **append the new appointment directly to the `appointments` signal** (`this.appointments.update(list => [...list, created])`) rather than forcing a full month refetch — satisfies "erscheint sofort" (AC 3) without an extra round-trip.
+  - [x] Add a "+ Neuer Termin" ghost-pill button to `home.html`'s toolbar (`components.appointment-create-entry`: transparent bg, `border-interactive` outline, `rounded.full`) opening the form blank (AC 2).
+  - [x] Add empty-time-slot targets to `calendar-column.ts`/`.html`: currently the column renders only the absolutely-positioned appointment overlay with no discrete slot elements. Add a focusable half-hour slot grid (48 slots across the existing `24 * HOUR_HEIGHT_PX` column) underneath the overlay; each empty slot gets `tabindex="0"` and `(dblclick)`/`(keydown.enter)`/`(keydown.space)` handlers emitting a `slotActivated` output with that slot's computed start `Date` (AC 1). **Reuse `positioned()`'s existing occupancy data to know which slots already have an appointment** — do not build a second, separately-maintained occupancy calculation; a slot covered by an appointment is not "empty" and must not fire the event.
+  - [x] Wire it all in `Home`: own the create-form's open/closed state and which element triggered it; on `slotActivated` (from any visible column) or the toolbar button, open the form (pre-filled or blank respectively); on successful creation, **append the new appointment directly to the `appointments` signal** (`this.appointments.update(list => [...list, created])`) rather than forcing a full month refetch — satisfies "erscheint sofort" (AC 3) without an extra round-trip.
 
-- [ ] **Task 7: i18n** (AC: 1, 2, 5, 9, 10)
-  - [ ] Add to both `public/i18n/de.json` and `en.json` under `calendar.*`: `createButton`, `createHeading`, `createFieldTitle`, `createFieldDate`, `createFieldStart`, `createFieldDuration`, `createFieldEnd`, `createFieldAttendees`, `createTitleRequired`, `createInvalidTimeRange`, `createCancel`, `createSave`, `addAttendee`, `statusInterruptible`, `statusDnd` — no hardcoded strings anywhere in the new components (Story 1.1/1.2 convention).
-  - [ ] Update `testing/transloco-testing.ts` with the new keys so component specs render real (not missing-key) text.
+- [x] **Task 7: i18n** (AC: 1, 2, 5, 9, 10)
+  - [x] Add to both `public/i18n/de.json` and `en.json` under `calendar.*`: `createButton`, `createHeading`, `createFieldTitle`, `createFieldDate`, `createFieldStart`, `createFieldDuration`, `createFieldEnd`, `createFieldAttendees`, `createTitleRequired`, `createInvalidTimeRange`, `createCancel`, `createSave`, `addAttendee`, `statusInterruptible`, `statusDnd` — no hardcoded strings anywhere in the new components (Story 1.1/1.2 convention).
+  - [x] Update `testing/transloco-testing.ts` with the new keys so component specs render real (not missing-key) text.
 
-- [ ] **Task 8: Tests** (AC: all)
+- [x] **Task 8: Tests** (AC: all)
   - [x] `tests/UnitTests/Domain/StatusHeuristicServiceTests.cs` (new): one test per rule/boundary — 0 attendees → always `Unterbrechbar` regardless of duration or `IsAllDay` (AC 8, including the all-day+0-attendee case specifically); exactly 45 min + ≥1 attendee → `Unterbrechbar` (AC 6); 46 min + 1 attendee → `Unterbrechbar` (just past the short-rule boundary, still not long enough for the long rule); exactly 90 min + exactly 3 attendees → `BitteNichtStoeren` (AC 7); 90 min + 2 attendees → `Unterbrechbar` (long duration alone isn't enough); all-day + ≥1 attendee → `BitteNichtStoeren`.
   - [x] Extend `tests/IntegrationTests/AppointmentEndpointsTests.cs`: `POST` creates a native appointment (`Provider`/`ProviderEventId` null) with the computed `Status`; `POST` with blank title → 400 `title-required`; `POST` with `end <= start` (including exactly equal) → 400 `invalid-time-range`; `POST` with a non-existent attendee id → 400 `attendee-not-found`; `POST` with valid attendees → 201, persisted `Attendee` rows verified; existing `GET /api/appointments` response now includes `status`.
   - [x] New `tests/IntegrationTests/PersonEndpointsTests.cs`: `GET /api/persons` (authenticated non-admin) returns the roster with `id`+`email` only — assert the response shape explicitly (no password hash or other Identity field leaks).
-  - [ ] New `status-badge.spec.ts`: renders the correct icon+text per status; asserts the rendered text is the full untruncated label (not just that a CSS class is absent).
-  - [ ] New `appointment-create.spec.ts` (TestBed + `HttpTestingController`): pre-filled input sets initial field values; blank open leaves fields empty; blank title + save → inline error, focus on title input, **no HTTP call**; invalid time range + save → inline error, no HTTP call; valid save → `POST` fired with the expected body, success emits the created appointment; `Esc` closes with no HTTP call and restores focus to a stub trigger element; Tab cycling stays within the form while open (simulate a `Tab` sequence, assert `document.activeElement` never leaves the form's boundary).
-  - [ ] New `calendar-column.spec.ts` (this component had no interactive behavior before this story): double-click on an empty slot emits `slotActivated` with the correct start `Date`; a slot already covered by an appointment does not emit on double-click; `Enter`/`Space` on a focused empty slot emits the same event as the double-click.
-  - [ ] Extend `home.spec.ts`: "+ Neuer Termin" opens the form blank; a successful creation appends to `appointments()` with **no additional `GET /api/appointments` request** (only the `POST`).
-  - [ ] New `focus-trap.spec.ts`: `Tab`/`Shift+Tab` wrap within the trapped container; deactivating restores focus to the pre-trap active element.
+  - [x] New `status-badge.spec.ts`: renders the correct icon+text per status; asserts the rendered text is the full untruncated label (not just that a CSS class is absent).
+  - [x] New `appointment-create.spec.ts` (TestBed + `HttpTestingController`): pre-filled input sets initial field values; blank open leaves fields empty; blank title + save → inline error, focus on title input, **no HTTP call**; invalid time range + save → inline error, no HTTP call; valid save → `POST` fired with the expected body, success emits the created appointment; `Esc` closes with no HTTP call and restores focus to a stub trigger element; Tab cycling stays within the form while open (simulate a `Tab` sequence, assert `document.activeElement` never leaves the form's boundary).
+  - [x] New `calendar-column.spec.ts` (this component had no interactive behavior before this story): double-click on an empty slot emits `slotActivated` with the correct start `Date`; a slot already covered by an appointment does not emit on double-click; `Enter`/`Space` on a focused empty slot emits the same event as the double-click.
+  - [x] Extend `home.spec.ts`: "+ Neuer Termin" opens the form blank; a successful creation appends to `appointments()` with **no additional `GET /api/appointments` request** (only the `POST`).
+  - [x] New `focus-trap.spec.ts`: `Tab`/`Shift+Tab` wrap within the trapped container; deactivating restores focus to the pre-trap active element.
 
 ## Dev Notes
 
@@ -183,10 +183,71 @@ tests/
 
 ### Agent Model Used
 
-_To be filled in by the dev-story workflow._
+Claude Sonnet 5 (claude-sonnet-5)
 
 ### Debug Log References
 
+- EF Core's default backing-field convention correctly bound `Appointment.Attendees` to the private `_attendees` field with no extra `OnModelCreating` configuration beyond `HasMany` — matching Story 1.2's note that a single, clean constructor is what makes this work.
+- `dotnet ef migrations add` required a placeholder `ConnectionStrings__Default` env var to run (the repo's `appsettings.json` intentionally carries no connection string, only environment-variable overrides) — did not touch `deploy/.env`, used a throwaway value for the design-time build only.
+
 ### Completion Notes List
 
+- All 11 acceptance criteria implemented and verified. Backend: 14 unit tests (`StatusHeuristicServiceTests`, rule order + all boundary cases) + 25 integration tests (5 new `AppointmentEndpointsTests` POST cases + 1 new `PersonEndpointsTests`), all passing. Frontend: 44/44 tests passing across 13 spec files (up from 30/9 after Story 1.2).
+- **Two deliberate, documented scope decisions** (not gaps): (1) no "ganztägig"/all-day toggle in the create form — `IsAllDay` and the Domain branch are fully implemented and unit-tested, but unreachable from this story's UI since neither FR-3's field list nor the mock includes it; Epic 2's synced-appointment upsert will set it later. (2) the attendee picker/chips display email, not a name — `Person` has no display-name field and none was added, since no AC/PRD requirement needs it; the mock's "Jonas Keller" label is illustrative UI polish, not a data requirement.
+- Rule order in `StatusHeuristicService.Compute` (no-attendee check first) is load-bearing for AC 8 — covered by a dedicated `No_attendees_outranks_all_day_rule` unit test, not just the boundary tests.
+- `calendar-column` gained its first interactive behavior in this story (half-hour slot grid for create-on-slot) — reuses the existing `positioned()` overlap data for occupancy rather than a second calculation, per the story's guardrail.
+- `shared/focus-trap` is generic (not appointment-create-specific) so Story 1.4's detail popover can reuse it directly.
+- Not built in this story (intentionally, per scope): Epic 3's full person-selector (the attendee picker is a narrower, form-scoped component), Epic 2's all-day sync flag, any UI for editing/deleting appointments (out of this story's ACs).
+- Verified via full test suites, not just spot checks: `dotnet test` (39/39) and `ng test`/`ng build` (44/44 tests, clean build) both run clean at the end of implementation.
+
 ### File List
+
+**Backend — `src/Domain`**
+- `AvailabilityStatus.cs` (new)
+- `Attendee.cs` (new)
+- `Appointment.cs` (modified — `Status`, `IsAllDay`, `Attendees`, `AddAttendee`/`AssignStatus`)
+- `StatusHeuristicService.cs` (new)
+
+**Backend — `src/Application`**
+- `Appointments/IAppointmentCreationService.cs` (new)
+- `Appointments/IAppointmentRepository.cs` (new)
+- `Accounts/IPersonRepository.cs` (modified — `GetAllAsync`)
+
+**Backend — `src/Infrastructure`**
+- `Appointments/AppointmentCreationService.cs` (new)
+- `Appointments/AppointmentRepository.cs` (new)
+- `Accounts/PersonRepository.cs` (modified — `GetAllAsync`)
+- `Persistence/ApplicationDbContext.cs` (modified — `Status`/`IsAllDay`/`Attendees` mapping)
+- `Persistence/Migrations/20260703172204_AddAppointmentStatusAndAttendees.cs` + `.Designer.cs` (new)
+- `Persistence/Migrations/ApplicationDbContextModelSnapshot.cs` (modified)
+
+**Backend — `src/Api`**
+- `Contracts/AppointmentContracts.cs` (modified — `CreateAppointmentRequest`, `Status` on response)
+- `Contracts/PersonContracts.cs` (new)
+- `Endpoints/AppointmentEndpoints.cs` (modified — `POST /api/appointments`)
+- `Endpoints/PersonEndpoints.cs` (new)
+- `Program.cs` (modified — DI registrations, `MapPersonEndpoints`)
+
+**Backend tests**
+- `tests/UnitTests/Domain/StatusHeuristicServiceTests.cs` (new)
+- `tests/UnitTests/Application/FakePersonRepository.cs` (modified — `GetAllAsync`)
+- `tests/IntegrationTests/AppointmentEndpointsTests.cs` (modified — 5 new POST tests + status-on-GET test)
+- `tests/IntegrationTests/PersonEndpointsTests.cs` (new)
+
+**Frontend — `frontend/src/app`**
+- `pages/home/calendar/appointment.model.ts` (modified — `status`/`AvailabilityStatus`)
+- `pages/home/calendar/calendar.service.ts` (modified — `createAppointment`, `getPersons`)
+- `pages/home/calendar/overlap-layout.spec.ts` (modified — fixtures need `status`)
+- `pages/home/calendar/status-badge/{status-badge.ts,.html,.css,.spec.ts}` (new)
+- `pages/home/calendar/attendee-picker/{attendee-picker.ts,.html,.css}` (new)
+- `pages/home/calendar/appointment-create/{appointment-create.ts,.html,.css,.spec.ts}` (new)
+- `pages/home/calendar/calendar-column/{calendar-column.ts,.html,.css}` (modified — slot grid, status badge); `calendar-column.spec.ts` (new)
+- `pages/home/home.ts`, `home.html`, `home.css` (modified — create button, wiring, local append)
+- `pages/home/home.spec.ts` (modified — new tests + `status` on fixtures)
+- `shared/focus-trap/{focus-trap.ts,.spec.ts}` (new)
+- `testing/transloco-testing.ts` (modified — new i18n test keys)
+- `public/i18n/{de,en}.json` (modified — new `calendar.*` keys)
+
+### Change Log
+
+- 2026-07-03: Story 1.3 fully implemented (Tasks 1–8) — `AvailabilityStatus`/`Attendee` domain models, `StatusHeuristicService` (AD-4/AD-5, all boundary rules), native appointment write path (`POST /api/appointments`), team roster endpoint (`GET /api/persons`), and the full frontend flow: empty-slot and button create entry points, focus-trapped create form with validation, form-scoped attendee picker, and status badges rendered in the calendar column. All 11 ACs verified; 39 backend + 44 frontend tests passing, both builds clean. Status → review.

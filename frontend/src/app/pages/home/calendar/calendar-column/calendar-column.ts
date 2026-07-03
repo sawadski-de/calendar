@@ -1,9 +1,12 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, input, output } from '@angular/core';
+import { StatusBadge } from '../status-badge/status-badge';
 import { Appointment } from '../appointment.model';
 import { addDays, startOfDay } from '../date-utils';
 import { computeOverlapLayout, OverlapLayoutItem } from '../overlap-layout';
 
 export const HOUR_HEIGHT_PX = 48;
+const MINUTES_PER_SLOT = 30;
+const SLOT_COUNT = (24 * 60) / MINUTES_PER_SLOT;
 
 interface PositionedAppointment {
   layout: OverlapLayoutItem;
@@ -14,15 +17,25 @@ interface PositionedAppointment {
   timeLabel: string;
 }
 
+interface TimeSlot {
+  index: number;
+  start: Date;
+  topPercent: number;
+  heightPercent: number;
+  occupied: boolean;
+}
+
 @Component({
   selector: 'app-calendar-column',
   standalone: true,
+  imports: [StatusBadge],
   templateUrl: './calendar-column.html',
   styleUrl: './calendar-column.css',
 })
 export class CalendarColumn {
   readonly date = input.required<Date>();
   readonly appointments = input<Appointment[]>([]);
+  readonly slotActivated = output<Date>();
 
   readonly totalHeightPx = 24 * HOUR_HEIGHT_PX;
 
@@ -50,6 +63,37 @@ export class CalendarColumn {
       };
     });
   });
+
+  // Half-hour slot grid for the create-appointment entry point (Story 1.3, AC 1). Reuses
+  // `positioned()`'s already-clipped occupancy data instead of a second, separately-maintained
+  // overlap calculation.
+  readonly slots = computed<TimeSlot[]>(() => {
+    const dayStart = startOfDay(this.date());
+    const slotHeightPercent = 100 / SLOT_COUNT;
+    const occupied = new Array(SLOT_COUNT).fill(false);
+
+    for (const block of this.positioned()) {
+      const startSlot = Math.max(0, Math.floor(block.topPercent / slotHeightPercent));
+      const endSlot = Math.min(SLOT_COUNT, Math.ceil((block.topPercent + block.heightPercent) / slotHeightPercent));
+      for (let i = startSlot; i < endSlot; i++) {
+        occupied[i] = true;
+      }
+    }
+
+    return Array.from({ length: SLOT_COUNT }, (_, index) => ({
+      index,
+      start: new Date(dayStart.getTime() + index * MINUTES_PER_SLOT * 60_000),
+      topPercent: index * slotHeightPercent,
+      heightPercent: slotHeightPercent,
+      occupied: occupied[index],
+    }));
+  });
+
+  activateSlot(slot: TimeSlot): void {
+    if (!slot.occupied) {
+      this.slotActivated.emit(slot.start);
+    }
+  }
 }
 
 function formatTime(date: Date): string {

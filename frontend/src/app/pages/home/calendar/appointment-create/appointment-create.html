@@ -1,0 +1,79 @@
+<div class="appointment-create__backdrop" (click)="cancel()">
+  <div class="appointment-create__panel" appFocusTrap (click)="$event.stopPropagation()" (keydown.escape)="cancel()">
+    <div class="appointment-create__head">
+      <span class="appointment-create__title text-label">{{ 'calendar.createHeading' | transloco }}</span>
+    </div>
+
+    <div class="appointment-create__field">
+      <label class="text-label-caps" for="appointment-create-title">{{ 'calendar.createFieldTitle' | transloco }}</label>
+      <input
+        #titleInput
+        id="appointment-create-title"
+        type="text"
+        class="appointment-create__input"
+        [value]="title()"
+        (input)="title.set($any($event.target).value)"
+      />
+      @if (titleError()) {
+        <span class="appointment-create__error">{{ 'calendar.createTitleRequired' | transloco }}</span>
+      }
+    </div>
+
+    <div class="appointment-create__field">
+      <label class="text-label-caps" for="appointment-create-date">{{ 'calendar.createFieldDate' | transloco }}</label>
+      <input
+        id="appointment-create-date"
+        type="date"
+        class="appointment-create__input"
+        [value]="dateValue()"
+        (input)="dateValue.set($any($event.target).value)"
+      />
+    </div>
+
+    <div class="appointment-create__field-row">
+      <div class="appointment-create__field">
+        <label class="text-label-caps" for="appointment-create-start">{{ 'calendar.createFieldStart' | transloco }}</label>
+        <input
+          id="appointment-create-start"
+          type="time"
+          class="appointment-create__input"
+          [value]="startTime()"
+          (input)="startTime.set($any($event.target).value)"
+        />
+      </div>
+      <div class="appointment-create__field">
+        <label class="text-label-caps" for="appointment-create-duration">{{ 'calendar.createFieldDuration' | transloco }}</label>
+        <input
+          id="appointment-create-duration"
+          type="number"
+          min="5"
+          step="5"
+          class="appointment-create__input"
+          [value]="durationMinutes()"
+          (input)="durationMinutes.set(+$any($event.target).value)"
+        />
+      </div>
+      <div class="appointment-create__field">
+        <span class="text-label-caps">{{ 'calendar.createFieldEnd' | transloco }}</span>
+        <span class="appointment-create__end">{{ endTimeLabel() }}</span>
+      </div>
+    </div>
+    @if (timeRangeError()) {
+      <span class="appointment-create__error">{{ 'calendar.createInvalidTimeRange' | transloco }}</span>
+    }
+
+    <div class="appointment-create__field">
+      <label class="text-label-caps">{{ 'calendar.createFieldAttendees' | transloco }}</label>
+      <app-attendee-picker [(selectedPersonIds)]="attendeePersonIds" />
+    </div>
+
+    <div class="appointment-create__footer">
+      <button type="button" class="appointment-create__button appointment-create__button--ghost" (click)="cancel()">
+        {{ 'calendar.createCancel' | transloco }}
+      </button>
+      <button type="button" class="appointment-create__button appointment-create__button--primary" (click)="save()">
+        {{ 'calendar.createSave' | transloco }}
+      </button>
+    </div>
+  </div>
+</div>
