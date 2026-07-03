@@ -16,6 +16,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 {
     public DbSet<Person> People => Set<Person>();
     public DbSet<Appointment> Appointments => Set<Appointment>();
+    public DbSet<Attendee> Attendees => Set<Attendee>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -35,7 +36,13 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(a => a.Title).IsRequired();
             entity.Property(a => a.StartUtc).IsRequired();
             entity.Property(a => a.EndUtc).IsRequired();
+            entity.Property(a => a.IsAllDay).IsRequired();
+            entity.Property(a => a.Status).HasConversion<string>().IsRequired();
             entity.HasOne<Person>().WithMany().HasForeignKey(a => a.PersonId);
+
+            // Backing field (_attendees) is picked up by EF Core's default convention — no extra
+            // access-mode configuration needed, same as this codebase's other read-only properties.
+            entity.HasMany(a => a.Attendees).WithOne().HasForeignKey(at => at.AppointmentId).OnDelete(DeleteBehavior.Cascade);
 
             // AD-7: native appointments have Provider/ProviderEventId both NULL — the filter excludes
             // them so the partial index only enforces uniqueness among synced appointments. The filter
@@ -44,6 +51,16 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.HasIndex(a => new { a.PersonId, a.Provider, a.ProviderEventId })
                 .IsUnique()
                 .HasFilter("provider_event_id IS NOT NULL");
+        });
+
+        builder.Entity<Attendee>(entity =>
+        {
+            entity.HasKey(at => at.Id);
+            entity.HasOne<Person>().WithMany().HasForeignKey(at => at.PersonId).OnDelete(DeleteBehavior.Restrict);
+
+            // Defensive guardrail: the same person cannot be added twice as an attendee of the same
+            // appointment.
+            entity.HasIndex(at => new { at.AppointmentId, at.PersonId }).IsUnique();
         });
     }
 }
