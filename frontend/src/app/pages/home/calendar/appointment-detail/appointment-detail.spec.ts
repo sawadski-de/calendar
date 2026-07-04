@@ -11,11 +11,22 @@ describe('AppointmentDetailPopover', () => {
 
   const detail: AppointmentDetail = {
     id: 'a1',
+    isFullDetail: true,
     title: 'Kurzabstimmung',
     startUtc: new Date(2026, 6, 2, 9, 0).toISOString(),
     endUtc: new Date(2026, 6, 2, 9, 30).toISOString(),
     status: 'Unterbrechbar',
     attendees: [{ personId: 'p1', email: 'jonas@example.com' }],
+  };
+
+  const statusOnlyDetail: AppointmentDetail = {
+    id: 'a1',
+    isFullDetail: false,
+    title: null,
+    startUtc: null,
+    endUtc: null,
+    status: 'BitteNichtStoeren',
+    attendees: null,
   };
 
   beforeEach(async () => {
@@ -120,5 +131,17 @@ describe('AppointmentDetailPopover', () => {
     (fixture.nativeElement.querySelector('.appointment-detail__panel') as HTMLElement).click();
 
     expect(closedCount).toBe(0);
+  });
+
+  it('renders only the status badge and a privacy note for a status-only (colleague) response (Story 3.1)', () => {
+    fixture.detectChanges();
+    httpMock.expectOne('/api/appointments/a1').flush(statusOnlyDetail);
+    fixture.detectChanges();
+
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('app-status-badge')).not.toBeNull();
+    expect(el.textContent).toContain('Details sind privat');
+    expect(el.textContent).not.toContain('Kurzabstimmung');
+    expect(el.textContent).not.toContain('jonas@example.com');
   });
 });

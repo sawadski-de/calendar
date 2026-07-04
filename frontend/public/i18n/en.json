@@ -48,7 +48,16 @@
     "detailFieldStatus": "Status",
     "detailFieldAttendees": "Attendees",
     "detailNoAttendees": "No attendees",
-    "detailLoadError": "Could not load this appointment."
+    "detailLoadError": "Could not load this appointment.",
+    "detailPrivateTitle": "Private / busy",
+    "detailPrivacyNote": "Details are private — only the status is visible.",
+    "colleagueSlotLabel": "Appointment, status: {{status}}",
+    "ownColumnLabel": "Me",
+    "personSelectorAddLabel": "Add teammate",
+    "personSelectorSearchPlaceholder": "Search teammate …",
+    "personSelectorRemoveLabel": "Remove {{email}}",
+    "personSelectorEmptyHint": "Choose teammates to see their availability.",
+    "monthAggregateMarker": "{{count}} do not disturb"
   },
   "languageSwitcher": {
     "groupLabel": "Language",

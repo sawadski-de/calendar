@@ -106,3 +106,26 @@
   flex: 1;
   min-width: 0;
 }
+
+/* Each column's own flex-item sizing lives on this wrapper (Story 3.1) rather than on
+   `.calendar-column` itself, since a colleague-column now sits inside a wrapper with an optional
+   label above it once more than one person is selected. */
+.calendar-column-wrap {
+  flex: 1 0 0;
+  min-width: 140px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.calendar-column-wrap__label {
+  color: var(--color-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.calendar-toolbar__person-selector {
+  display: flex;
+  align-items: center;
+}

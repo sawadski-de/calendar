@@ -7,11 +7,18 @@ import { CalendarViewType, ViewSwitcher } from '../../shared/view-switcher/view-
 import { ConnectionsService } from '../settings/connections/connections.service';
 import { AppointmentCreate } from './calendar/appointment-create/appointment-create';
 import { AppointmentDetailPopover } from './calendar/appointment-detail/appointment-detail';
-import { Appointment } from './calendar/appointment.model';
+import { Appointment, CalendarSlot, ColleagueAppointmentSlot } from './calendar/appointment.model';
 import { CalendarColumn } from './calendar/calendar-column/calendar-column';
-import { CalendarService } from './calendar/calendar.service';
+import { CalendarService, PersonSummary } from './calendar/calendar.service';
+import { buildColleagueDayIndex } from './calendar/colleague-day-status';
 import { addDays, addMonths, dateKey, getMonthGridDays, getWeekDays, groupByDay, startOfDay } from './calendar/date-utils';
 import { MonthView } from './calendar/month-view/month-view';
+import { PersonSelector } from './calendar/person-selector/person-selector';
+
+interface ColumnOwner {
+  personId: string | null;
+  label: string;
+}
 
 const HOUR_LABELS = Array.from({ length: 24 }, (_, hour) => hour);
 
@@ -27,6 +34,7 @@ const HOUR_LABELS = Array.from({ length: 24 }, (_, hour) => hour);
     MonthView,
     AppointmentCreate,
     AppointmentDetailPopover,
+    PersonSelector,
   ],
   templateUrl: './home.html',
   styleUrl: './home.css',
@@ -55,10 +63,20 @@ export class Home implements OnInit {
 
   readonly weekDays = computed(() => getWeekDays(this.focusDate()));
   readonly dayDate = computed(() => startOfDay(this.focusDate()));
-  readonly isEmpty = computed(() => !this.loading() && this.appointments().length === 0);
+  // Story 3.1: a colleague selection means there's real content to show (their columns) even when the
+  // viewer's own calendar is empty — the empty-state message must not hide the multi-person view.
+  readonly isEmpty = computed(
+    () => !this.loading() && this.appointments().length === 0 && this.selectedPersonIds().length === 0
+  );
   readonly showConnectPrompt = computed(() => this.isEmpty() && !this.hasAnyConnection());
 
   private readonly appointmentsByDay = computed(() => groupByDay(this.appointments()));
+
+  // Built once per `colleagueAppointments()` change (Angular memoizes `computed()` by its signal
+  // dependencies) — `colleagueAppointmentsFor` below is called 7×(colleague count) times per week-view
+  // change-detection cycle; querying a pre-grouped index avoids re-grouping each colleague's full
+  // appointment array from scratch on every one of those calls (code review finding, Story 3.1/3.2).
+  private readonly colleagueDayIndex = computed(() => buildColleagueDayIndex(this.colleagueAppointments()));
 
   readonly createFormOpen = signal(false);
   readonly createFormPrefillStart = signal<Date | null>(null);
@@ -66,10 +84,31 @@ export class Home implements OnInit {
   readonly detailOpen = signal(false);
   readonly detailAppointmentId = signal<string | null>(null);
 
+  // Story 3.1: selected colleagues persist across Day/Week switches (AC 9) — plain component state,
+  // untouched by setViewType.
+  readonly roster = signal<PersonSummary[]>([]);
+  readonly selectedPersonIds = signal<string[]>([]);
+  readonly colleagueAppointments = signal<Record<string, ColleagueAppointmentSlot[]>>({});
+
+  // Day-major, person-minor: for every visible day, "own" always comes first, then one entry per
+  // selected colleague (AC 2's "eigene Spalte zuerst" applied per day-cluster). Empty selection yields
+  // exactly the pre-Epic-3 single-column-per-day shape, so nothing regresses visually until a colleague
+  // is actually picked.
+  readonly columnOwners = computed<ColumnOwner[]>(() => [
+    { personId: null, label: '' },
+    ...this.selectedPersonIds().map((personId) => ({ personId, label: this.colleagueLabel(personId) })),
+  ]);
+
   private loadedMonthKey: string | null = null;
+  private loadedColleagueKey: string | null = null;
 
   ngOnInit(): void {
     this.loadAppointmentsForFocusMonth();
+    this.loadColleagueAppointments();
+    this.calendarService.getPersons().subscribe({
+      next: (people) => this.roster.set(people),
+      error: () => {},
+    });
     this.connectionsService.getConnections().subscribe({
       next: (connections) => this.hasAnyConnection.set(connections.some((c) => c.connected)),
       // Leave hasAnyConnection at its default (true) on failure — showing the plain empty state
@@ -106,10 +145,28 @@ export class Home implements OnInit {
   navigateToday(): void {
     this.focusDate.set(new Date());
     this.loadAppointmentsForFocusMonth();
+    this.loadColleagueAppointments();
   }
 
   appointmentsFor(date: Date): Appointment[] {
     return this.appointmentsByDay().get(dateKey(date)) ?? [];
+  }
+
+  colleagueLabel(personId: string): string {
+    return this.roster().find((person) => person.id === personId)?.email ?? '';
+  }
+
+  appointmentsForOwner(personId: string | null, date: Date): CalendarSlot[] {
+    return personId === null ? this.appointmentsFor(date) : this.colleagueAppointmentsFor(personId, date);
+  }
+
+  colleagueAppointmentsFor(personId: string, date: Date): ColleagueAppointmentSlot[] {
+    return this.colleagueDayIndex()[personId]?.get(dateKey(date)) ?? [];
+  }
+
+  onSelectionChanged(personIds: string[]): void {
+    this.selectedPersonIds.set(personIds);
+    this.loadColleagueAppointments();
   }
 
   openCreateBlank(): void {
@@ -153,6 +210,7 @@ export class Home implements OnInit {
 
     this.focusDate.set(next);
     this.loadAppointmentsForFocusMonth();
+    this.loadColleagueAppointments();
   }
 
   /** Always loads the full Mon–Sun grid covering focusDate's month, including the leading/trailing
@@ -178,6 +236,37 @@ export class Home implements OnInit {
         this.loading.set(false);
       },
       error: () => this.loading.set(false),
+    });
+  }
+
+  /** Mirrors `loadAppointmentsForFocusMonth`'s month-grid range, but keyed on (month, selection) since
+   *  a selection change must refetch even when the visible month didn't (Story 3.1, AC 7). Skips the
+   *  request entirely for an empty selection (AC 8 needs no data, not an empty successful response). */
+  private loadColleagueAppointments(): void {
+    const personIds = this.selectedPersonIds();
+    if (personIds.length === 0) {
+      this.colleagueAppointments.set({});
+      this.loadedColleagueKey = null;
+      return;
+    }
+
+    const focus = this.focusDate();
+    const monthKey = `${focus.getFullYear()}-${focus.getMonth()}`;
+    const colleagueKey = `${monthKey}|${[...personIds].sort().join(',')}`;
+    if (colleagueKey === this.loadedColleagueKey) {
+      return;
+    }
+
+    const gridDays = getMonthGridDays(focus);
+    const from = gridDays[0];
+    const to = addDays(gridDays[gridDays.length - 1], 1);
+
+    this.calendarService.getColleagueAppointments(personIds, from, to).subscribe({
+      next: (result) => {
+        this.colleagueAppointments.set(result);
+        this.loadedColleagueKey = colleagueKey;
+      },
+      error: () => {},
     });
   }
 }
