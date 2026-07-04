@@ -2,9 +2,12 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
+export type PersonRole = 'Admin' | 'Member';
+
 export interface CurrentPerson {
   id: string;
   email: string;
+  role: PersonRole;
 }
 
 @Injectable({ providedIn: 'root' })

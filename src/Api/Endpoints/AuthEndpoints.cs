@@ -40,11 +40,17 @@ public static class AuthEndpoints
 
         // Session-check for the Angular route guard (AC 3): the auth cookie is HttpOnly and
         // therefore invisible to client JS, so the SPA has no other way to know it is logged in.
+        // The guard calls this on every route navigation, so the role comes from the claim baked in
+        // at sign-in (ApplicationUserClaimsPrincipalFactory) rather than a DB query per navigation
+        // (code review finding). This only ever gates a convenience nav link — server-side
+        // enforcement for admin-only endpoints still reads Person.Role fresh from the DB on every
+        // request via AdminOnlyAuthorizationHandler and never trusts this claim (AD-17).
         app.MapGet("/api/auth/me", (ClaimsPrincipal user) =>
         {
             var id = user.FindFirstValue(ClaimTypes.NameIdentifier);
             var email = user.FindFirstValue(ClaimTypes.Email);
-            return Results.Ok(new { id, email });
+            var role = user.FindFirstValue(ApplicationUserClaimsPrincipalFactory.RoleClaimType);
+            return Results.Ok(new { id, email, role });
         }).RequireAuthorization();
     }
 }

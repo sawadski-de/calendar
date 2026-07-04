@@ -37,6 +37,10 @@ namespace Infrastructure.Persistence.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_all_day");
 
+                    b.Property<string>("Location")
+                        .HasColumnType("text")
+                        .HasColumnName("location");
+
                     b.Property<Guid>("PersonId")
                         .HasColumnType("uuid")
                         .HasColumnName("person_id");
@@ -55,9 +59,10 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Status")
                         .IsRequired()
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("text")
-                        .HasColumnName("status")
-                        .HasDefaultValue("Unterbrechbar");
+                        .HasDefaultValue("Unterbrechbar")
+                        .HasColumnName("status");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -86,7 +91,15 @@ namespace Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("appointment_id");
 
-                    b.Property<Guid>("PersonId")
+                    b.Property<string>("ExternalDisplayName")
+                        .HasColumnType("text")
+                        .HasColumnName("external_display_name");
+
+                    b.Property<string>("ExternalEmail")
+                        .HasColumnType("text")
+                        .HasColumnName("external_email");
+
+                    b.Property<Guid?>("PersonId")
                         .HasColumnType("uuid")
                         .HasColumnName("person_id");
 
@@ -100,7 +113,64 @@ namespace Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_attendees_appointment_id_person_id");
 
-                    b.ToTable("attendees", (string)null);
+                    b.ToTable("attendees", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_attendees_internal_xor_external", "(person_id IS NOT NULL) <> (external_email IS NOT NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("Domain.CalendarConnection", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset?>("AccessTokenExpiresUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("access_token_expires_utc");
+
+                    b.Property<int>("ConsecutiveFailureCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("consecutive_failure_count");
+
+                    b.Property<string>("EncryptedAccessToken")
+                        .HasColumnType("text")
+                        .HasColumnName("encrypted_access_token");
+
+                    b.Property<string>("EncryptedRefreshToken")
+                        .HasColumnType("text")
+                        .HasColumnName("encrypted_refresh_token");
+
+                    b.Property<DateTimeOffset?>("LastAttemptAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_attempt_at");
+
+                    b.Property<string>("LastErrorCode")
+                        .HasColumnType("text")
+                        .HasColumnName("last_error_code");
+
+                    b.Property<DateTimeOffset?>("LastSuccessfulSyncAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_successful_sync_at");
+
+                    b.Property<Guid>("PersonId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("person_id");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("provider");
+
+                    b.HasKey("Id")
+                        .HasName("pk_calendar_connections");
+
+                    b.HasIndex("PersonId", "Provider")
+                        .IsUnique()
+                        .HasDatabaseName("ix_calendar_connections_person_id_provider");
+
+                    b.ToTable("calendar_connections", (string)null);
                 });
 
             modelBuilder.Entity("Domain.Person", b =>
@@ -315,8 +385,17 @@ namespace Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("PersonId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
                         .HasConstraintName("fk_attendees_people_person_id");
+                });
+
+            modelBuilder.Entity("Domain.CalendarConnection", b =>
+                {
+                    b.HasOne("Domain.Person", null)
+                        .WithMany()
+                        .HasForeignKey("PersonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_calendar_connections_people_person_id");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>

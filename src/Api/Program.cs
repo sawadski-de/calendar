@@ -4,10 +4,12 @@ using Api.Errors;
 using Api.Startup;
 using Application.Accounts;
 using Application.Appointments;
+using Application.Sync;
 using Infrastructure.Accounts;
 using Infrastructure.Appointments;
 using Infrastructure.Identity;
 using Infrastructure.Persistence;
+using Infrastructure.Sync;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -54,7 +56,8 @@ builder.Services
         options.User.RequireUniqueEmail = true;
     })
     .AddEntityFrameworkStores<ApplicationDbContext>()
-    .AddSignInManager();
+    .AddSignInManager()
+    .AddClaimsPrincipalFactory<ApplicationUserClaimsPrincipalFactory>();
 
 // AddIdentityCore() does not register an authentication scheme by itself — wire the cookie up
 // explicitly (AD-10: HttpOnly/Secure/SameSite=Lax, no bearer token ever reaches client JS).
@@ -88,6 +91,40 @@ builder.Services.AddScoped<RoleChangeService>();
 builder.Services.AddScoped<IAppointmentViewService, AppointmentViewService>();
 builder.Services.AddScoped<IAppointmentRepository, AppointmentRepository>();
 builder.Services.AddScoped<IAppointmentCreationService, AppointmentCreationService>();
+
+// Data Protection backs the OAuth "state" param (CSRF protection on the callback, see
+// CalendarConnectionEndpoints) — explicit registration rather than relying on it being pulled in
+// transitively by AddAuthentication/AddCookie, so it isn't silently lost if that wiring ever changes.
+builder.Services.AddDataProtection();
+
+// Factory-based (not a plain instance) so IConfiguration is read lazily at first resolution, not at
+// this top-level statement's execution time — WebApplicationFactory-based tests inject config
+// overrides around the builder.Build() call, which happens after this line runs; reading eagerly here
+// would see the un-overridden real configuration instead (integration-test regression, Story 2.1).
+builder.Services.AddSingleton(sp => new TokenEncryptionOptions
+{
+    Base64Key = sp.GetRequiredService<IConfiguration>()["TOKEN_ENCRYPTION_KEY"] ?? string.Empty,
+});
+builder.Services.AddSingleton<ITokenEncryption, AesGcmTokenEncryption>();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddScoped<ICalendarConnectionRepository, CalendarConnectionRepository>();
+
+builder.Services.Configure<GoogleOAuthOptions>(options =>
+{
+    options.ClientId = builder.Configuration["GOOGLE_OAUTH_CLIENT_ID"] ?? string.Empty;
+    options.ClientSecret = builder.Configuration["GOOGLE_OAUTH_CLIENT_SECRET"] ?? string.Empty;
+    options.RedirectUri = builder.Configuration["GOOGLE_OAUTH_REDIRECT_URI"] ?? string.Empty;
+});
+builder.Services.AddHttpClient<GoogleOAuthClient>();
+
+builder.Services.Configure<MicrosoftOAuthOptions>(options =>
+{
+    options.ClientId = builder.Configuration["MICROSOFT_OAUTH_CLIENT_ID"] ?? string.Empty;
+    options.ClientSecret = builder.Configuration["MICROSOFT_OAUTH_CLIENT_SECRET"] ?? string.Empty;
+    options.RedirectUri = builder.Configuration["MICROSOFT_OAUTH_REDIRECT_URI"] ?? string.Empty;
+    options.TenantId = builder.Configuration["MICROSOFT_OAUTH_TENANT_ID"] ?? "common";
+});
+builder.Services.AddHttpClient<MicrosoftOAuthClient>();
 
 builder.Services.AddExceptionHandler<ProblemDetailsExceptionHandler>();
 builder.Services.AddProblemDetails(options =>
@@ -142,6 +179,8 @@ app.MapAuthEndpoints();
 app.MapAdminEndpoints();
 app.MapAppointmentEndpoints();
 app.MapPersonEndpoints();
+app.MapCalendarConnectionEndpoints();
+app.MapAdminSyncOverviewEndpoints();
 
 app.Run();
 

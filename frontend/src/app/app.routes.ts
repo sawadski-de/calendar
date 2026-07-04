@@ -8,5 +8,15 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/home/home').then((m) => m.Home),
     canActivate: [authGuard],
   },
+  {
+    path: 'settings/connections',
+    loadComponent: () => import('./pages/settings/connections/connections').then((m) => m.Connections),
+    canActivate: [authGuard],
+  },
+  {
+    path: 'admin/sync-overview',
+    loadComponent: () => import('./pages/admin/sync-overview/sync-overview').then((m) => m.SyncOverview),
+    canActivate: [authGuard],
+  },
   { path: '**', redirectTo: '' },
 ];

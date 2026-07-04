@@ -10,7 +10,9 @@
     "genericError": "Sign-in failed. Please check your credentials."
   },
   "nav": {
-    "logout": "Sign out"
+    "logout": "Sign out",
+    "settings": "Settings",
+    "syncOverview": "Sync overview"
   },
   "calendar": {
     "viewMonth": "Month",
@@ -21,6 +23,9 @@
     "next": "Next",
     "today": "Today",
     "empty": "You don't have any appointments yet.",
+    "emptyNoConnectionPrefix": "No appointments yet — connect your calendar in ",
+    "emptyNoConnectionLink": "Settings",
+    "emptyNoConnectionSuffix": " whenever you're ready.",
     "createButton": "+ New appointment",
     "createHeading": "New appointment",
     "createFieldTitle": "Title",
@@ -49,5 +54,47 @@
     "groupLabel": "Language",
     "de": "DE",
     "en": "EN"
+  },
+  "settings": {
+    "connections": {
+      "crumbHome": "Calendar",
+      "crumbConnections": "Calendar connections",
+      "heading": "Calendar connections",
+      "sub": "Connect your Outlook or Google calendar so your appointments are imported automatically. Sync runs one-way every few minutes — nothing is ever written back to your account.",
+      "statusConnected": "Connected",
+      "statusNotConnected": "Not connected",
+      "statusError": "Connection error",
+      "connect": "Connect",
+      "retry": "Retry",
+      "disconnect": "Disconnect",
+      "disconnectConfirm": "Disconnect {{provider}}? All appointments imported from it will be removed.",
+      "connectedNotice": "{{provider}} Calendar connected successfully.",
+      "lastSync": "Last synced {{minutes}} min ago.",
+      "neverSynced": "No successful sync yet",
+      "error": {
+        "consent_denied": "Connection declined — consent to calendar access was not granted.",
+        "tenant_blocked": "Connection blocked by your organization — please contact your IT admin.",
+        "code_missing": "Connection failed — please try again.",
+        "no_refresh_token_returned": "Connection failed — please try again.",
+        "invalid_state": "Connection failed — please try again.",
+        "oauth_error": "Connection failed — please try again.",
+        "code_exchange_failed": "Connection failed — please try again.",
+        "token_refresh_failed": "Sync failed — please reconnect your account.",
+        "provider_error": "Sync isn't working right now — it will retry automatically.",
+        "unknown_error": "Sync failed — it will retry automatically."
+      }
+    }
+  },
+  "admin": {
+    "syncOverview": {
+      "crumbHome": "Calendar",
+      "crumbOverview": "Sync overview",
+      "heading": "Sync overview",
+      "columnPerson": "Person",
+      "columnProvider": "Provider",
+      "columnStatus": "Status",
+      "columnLastSync": "Last sync",
+      "forbidden": "Access denied — this page is for admins only."
+    }
   }
 }

@@ -1,0 +1,52 @@
+<div class="sync-overview-page">
+  <nav class="sync-overview-page__crumb text-caption">
+    <a routerLink="/">{{ 'admin.syncOverview.crumbHome' | transloco }}</a>
+    <span> · </span>
+    <span>{{ 'admin.syncOverview.crumbOverview' | transloco }}</span>
+  </nav>
+
+  <h1 class="text-heading">{{ 'admin.syncOverview.heading' | transloco }}</h1>
+
+  @if (forbidden()) {
+    <p class="sync-overview-page__notice text-body" role="alert">{{ 'admin.syncOverview.forbidden' | transloco }}</p>
+  } @else if (!loading()) {
+    <table class="sync-overview-table">
+      <thead>
+        <tr>
+          <th class="text-label-caps">{{ 'admin.syncOverview.columnPerson' | transloco }}</th>
+          <th class="text-label-caps">{{ 'admin.syncOverview.columnProvider' | transloco }}</th>
+          <th class="text-label-caps">{{ 'admin.syncOverview.columnStatus' | transloco }}</th>
+          <th class="text-label-caps">{{ 'admin.syncOverview.columnLastSync' | transloco }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of rows(); track row.personId + row.provider) {
+          <tr [class.sync-overview-table__row--error]="row.hasError">
+            <td class="text-body">{{ row.personEmail }}</td>
+            <td class="text-body">{{ row.provider }}</td>
+            <td>
+              @if (row.hasError) {
+                <span class="status-tag status-tag--err text-label-caps">{{ 'settings.connections.statusError' | transloco }}</span>
+              } @else if (row.connected) {
+                <span class="status-tag status-tag--ok text-label-caps">{{ 'settings.connections.statusConnected' | transloco }}</span>
+              } @else {
+                <span class="status-tag text-label-caps">{{ 'settings.connections.statusNotConnected' | transloco }}</span>
+              }
+            </td>
+            <td aria-live="polite" class="sync-line text-caption" [class.sync-line--err]="row.hasError">
+              @if (row.hasError) {
+                {{ 'settings.connections.error.' + row.errorCode | transloco }}
+              } @else if (row.lastSuccessfulSyncAt) {
+                {{ 'settings.connections.lastSync' | transloco: syncLineParams(row) }}
+              } @else if (row.connected) {
+                {{ 'settings.connections.neverSynced' | transloco }}
+              } @else {
+                <span>—</span>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>

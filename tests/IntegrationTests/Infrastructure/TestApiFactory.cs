@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -47,6 +48,16 @@ public class TestApiFactory : WebApplicationFactory<Program>
                 ["ConnectionStrings:Default"] = _connectionString,
                 ["INITIAL_ADMIN_EMAIL"] = AdminEmail,
                 ["INITIAL_ADMIN_PASSWORD"] = AdminPassword,
+                // Story 2.1: AesGcmTokenEncryption fails fast without a valid 32-byte base64 key —
+                // every test run gets its own random key, tokens never need to survive across runs.
+                ["TOKEN_ENCRYPTION_KEY"] = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)),
+                ["GOOGLE_OAUTH_CLIENT_ID"] = "test-client-id",
+                ["GOOGLE_OAUTH_CLIENT_SECRET"] = "test-client-secret",
+                ["GOOGLE_OAUTH_REDIRECT_URI"] = "https://localhost/api/calendar-connections/google/callback",
+                ["MICROSOFT_OAUTH_CLIENT_ID"] = "test-client-id",
+                ["MICROSOFT_OAUTH_CLIENT_SECRET"] = "test-client-secret",
+                ["MICROSOFT_OAUTH_REDIRECT_URI"] = "https://localhost/api/calendar-connections/outlook/callback",
+                ["MICROSOFT_OAUTH_TENANT_ID"] = "common",
             });
         });
     }

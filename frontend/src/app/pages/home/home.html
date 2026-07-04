@@ -2,6 +2,14 @@
   <header class="app-frame__header">
     <span class="text-label">{{ 'app.title' | transloco }}</span>
     <div class="app-frame__actions">
+      <a routerLink="/settings/connections" class="app-frame__settings text-caption">
+        {{ 'nav.settings' | transloco }}
+      </a>
+      @if (isAdmin()) {
+        <a routerLink="/admin/sync-overview" class="app-frame__settings text-caption">
+          {{ 'nav.syncOverview' | transloco }}
+        </a>
+      }
       <app-language-switcher />
       <button type="button" class="app-frame__logout text-caption" (click)="logout()">
         {{ 'nav.logout' | transloco }}
@@ -39,7 +47,15 @@
     </div>
 
     @if (isEmpty()) {
-      <p class="calendar-empty text-body">{{ 'calendar.empty' | transloco }}</p>
+      @if (showConnectPrompt()) {
+        <p class="calendar-empty text-body">
+          {{ 'calendar.emptyNoConnectionPrefix' | transloco }}<a routerLink="/settings/connections">{{
+            'calendar.emptyNoConnectionLink' | transloco
+          }}</a>{{ 'calendar.emptyNoConnectionSuffix' | transloco }}
+        </p>
+      } @else {
+        <p class="calendar-empty text-body">{{ 'calendar.empty' | transloco }}</p>
+      }
     } @else {
       @switch (viewType()) {
         @case ('month') {

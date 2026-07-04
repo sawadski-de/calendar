@@ -43,11 +43,18 @@ public static class AppointmentEndpoints
                 return ProblemResults.Problem(StatusCodes.Status404NotFound, "appointment-not-found", "Appointment not found.");
             }
 
-            var attendeePersonIds = appointment.Attendees.Select(a => a.PersonId).ToHashSet();
+            var internalAttendeeIds = appointment.Attendees
+                .Where(a => a.PersonId.HasValue)
+                .Select(a => a.PersonId!.Value)
+                .ToHashSet();
             var roster = await personRepository.GetAllAsync(cancellationToken);
-            var attendees = roster
-                .Where(p => attendeePersonIds.Contains(p.Id))
-                .Select(p => new AttendeeSummaryResponse(p.Id, p.Email))
+            var emailByPersonId = roster
+                .Where(p => internalAttendeeIds.Contains(p.Id))
+                .ToDictionary(p => p.Id, p => p.Email);
+            var attendees = appointment.Attendees
+                .Select(a => a.PersonId.HasValue
+                    ? new AttendeeSummaryResponse(a.PersonId, emailByPersonId.GetValueOrDefault(a.PersonId.Value, string.Empty))
+                    : new AttendeeSummaryResponse(null, a.ExternalDisplayLabel))
                 .ToList();
 
             var response = new AppointmentDetailResponse(

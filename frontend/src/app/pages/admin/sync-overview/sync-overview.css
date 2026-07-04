@@ -1,0 +1,50 @@
+.sync-overview-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.sync-overview-page__crumb a {
+  color: var(--color-accent-text);
+}
+
+.sync-overview-page__crumb {
+  color: var(--color-muted);
+}
+
+.sync-overview-page__notice {
+  background: var(--color-dnd-fill);
+  color: var(--color-dnd-text);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+}
+
+.sync-overview-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.sync-overview-table th,
+.sync-overview-table td {
+  text-align: left;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.sync-overview-table th {
+  color: var(--color-muted);
+}
+
+.sync-overview-table__row--error {
+  background: var(--color-dnd-fill);
+}
+
+/* .status-tag/.sync-line and their --ok/--err variants live in src/styles/status-tag.css —
+   shared with Settings → Kalenderverbindungen, which renders the same status vocabulary. */

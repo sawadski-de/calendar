@@ -1,9 +1,10 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { AuthService } from '../../core/auth/auth.service';
 import { LanguageSwitcher } from '../../shared/language-switcher/language-switcher';
 import { CalendarViewType, ViewSwitcher } from '../../shared/view-switcher/view-switcher';
+import { ConnectionsService } from '../settings/connections/connections.service';
 import { AppointmentCreate } from './calendar/appointment-create/appointment-create';
 import { AppointmentDetailPopover } from './calendar/appointment-detail/appointment-detail';
 import { Appointment } from './calendar/appointment.model';
@@ -17,7 +18,16 @@ const HOUR_LABELS = Array.from({ length: 24 }, (_, hour) => hour);
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [TranslocoPipe, LanguageSwitcher, ViewSwitcher, CalendarColumn, MonthView, AppointmentCreate, AppointmentDetailPopover],
+  imports: [
+    TranslocoPipe,
+    RouterLink,
+    LanguageSwitcher,
+    ViewSwitcher,
+    CalendarColumn,
+    MonthView,
+    AppointmentCreate,
+    AppointmentDetailPopover,
+  ],
   templateUrl: './home.html',
   styleUrl: './home.css',
 })
@@ -25,17 +35,28 @@ export class Home implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly calendarService = inject(CalendarService);
+  private readonly connectionsService = inject(ConnectionsService);
 
   readonly viewType = signal<CalendarViewType>('week');
   readonly focusDate = signal(new Date());
   readonly appointments = signal<Appointment[]>([]);
   readonly loading = signal(false);
 
+  // Story 2.1 AC 12: a brand-new user with zero appointments AND zero calendar connections sees an
+  // inviting connect-prompt instead of the plain empty message — someone who already connected but
+  // hasn't had a sync cycle run yet (still zero appointments) should not be re-prompted to connect.
+  readonly hasAnyConnection = signal(true);
+
+  // Story 2.3: a convenience-only nav gate — the real enforcement is the API's "Admin" policy
+  // (AD-17). A Member who navigates to /admin/sync-overview directly still gets a 403 from the API.
+  readonly isAdmin = signal(false);
+
   readonly hourLabels = HOUR_LABELS;
 
   readonly weekDays = computed(() => getWeekDays(this.focusDate()));
   readonly dayDate = computed(() => startOfDay(this.focusDate()));
   readonly isEmpty = computed(() => !this.loading() && this.appointments().length === 0);
+  readonly showConnectPrompt = computed(() => this.isEmpty() && !this.hasAnyConnection());
 
   private readonly appointmentsByDay = computed(() => groupByDay(this.appointments()));
 
@@ -49,6 +70,16 @@ export class Home implements OnInit {
 
   ngOnInit(): void {
     this.loadAppointmentsForFocusMonth();
+    this.connectionsService.getConnections().subscribe({
+      next: (connections) => this.hasAnyConnection.set(connections.some((c) => c.connected)),
+      // Leave hasAnyConnection at its default (true) on failure — showing the plain empty state
+      // rather than an unwarranted connect-prompt is the safer failure mode here.
+      error: () => {},
+    });
+    this.authService.me().subscribe({
+      next: (person) => this.isAdmin.set(person.role === 'Admin'),
+      error: () => {},
+    });
   }
 
   logout(): void {

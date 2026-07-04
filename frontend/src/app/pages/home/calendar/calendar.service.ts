@@ -16,7 +16,7 @@ export interface PersonSummary {
 }
 
 export interface AttendeeSummary {
-  personId: string;
+  personId: string | null;
   email: string;
 }
 

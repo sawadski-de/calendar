@@ -17,6 +17,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Person> People => Set<Person>();
     public DbSet<Appointment> Appointments => Set<Appointment>();
     public DbSet<Attendee> Attendees => Set<Attendee>();
+    public DbSet<CalendarConnection> CalendarConnections => Set<CalendarConnection>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -59,11 +60,31 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         builder.Entity<Attendee>(entity =>
         {
             entity.HasKey(at => at.Id);
+            // PersonId is nullable as of Story 2.1 (external/synced attendees, see CalendarConnection
+            // below) — Postgres treats each NULL as distinct in a unique index, so this still allows
+            // multiple external attendees (PersonId == NULL) on the same appointment, which is exactly
+            // the wanted behavior; it only ever de-dupes when PersonId is actually set.
             entity.HasOne<Person>().WithMany().HasForeignKey(at => at.PersonId).OnDelete(DeleteBehavior.Restrict);
-
-            // Defensive guardrail: the same person cannot be added twice as an attendee of the same
-            // appointment.
             entity.HasIndex(at => new { at.AppointmentId, at.PersonId }).IsUnique();
+
+            // Exactly one of PersonId (internal) / ExternalEmail (synced, Story 2.1) must be set — the
+            // check constraint is the actual guardrail, since the two-constructor split in Domain only
+            // prevents this at the C# call site, not for rows written by any other path.
+            entity.ToTable(t => t.HasCheckConstraint(
+                "ck_attendees_internal_xor_external",
+                "(person_id IS NOT NULL) <> (external_email IS NOT NULL)"));
+        });
+
+        builder.Entity<CalendarConnection>(entity =>
+        {
+            entity.HasKey(c => c.Id);
+            entity.Property(c => c.Provider).IsRequired();
+            // Tokens stay null until the first successful handshake (see CalendarConnection doc comment)
+            // — a consent-denied/never-connected row must still be storable to carry AC 10's error state.
+            entity.HasOne<Person>().WithMany().HasForeignKey(c => c.PersonId).OnDelete(DeleteBehavior.Cascade);
+
+            // At most one connection per (person, provider) — Story 2.1 AC/Dev Notes.
+            entity.HasIndex(c => new { c.PersonId, c.Provider }).IsUnique();
         });
     }
 }
