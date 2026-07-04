@@ -368,6 +368,7 @@ public class AppointmentEndpointsTests(PostgresContainerFixture postgres)
 
         var detail = await client.GetFromJsonAsync<JsonElement>($"/api/appointments/{appointmentId}");
 
+        Assert.True(detail.GetProperty("isFullDetail").GetBoolean());
         Assert.Equal("Detail-Test", detail.GetProperty("title").GetString());
         Assert.Equal(nameof(AvailabilityStatus.Unterbrechbar), detail.GetProperty("status").GetString());
         var attendees = detail.GetProperty("attendees").EnumerateArray().ToArray();
@@ -390,10 +391,11 @@ public class AppointmentEndpointsTests(PostgresContainerFixture postgres)
     }
 
     [Fact]
-    public async Task Get_by_id_returns_404_for_another_persons_appointment()
+    public async Task Get_by_id_returns_status_only_for_a_colleagues_appointment_without_attendance()
     {
-        // Same code/status as "doesn't exist" (Get_by_id_returns_404_for_a_non_existent_appointment) —
-        // no existence leak for an appointment the caller doesn't own.
+        // Story 3.1, FR-9: replaces the pre-Epic-3 404 placeholder — a colleague's appointment now
+        // resolves to 200 with only the status exposed, never a 404 (that would leak nothing extra, but
+        // the designed default per EXPERIENCE.md is an explicit status-only response, not an error).
         var (factory, ownerClient, ownerId) = await CreateAuthenticatedContextAsync();
         using var f = factory;
         using var oc = ownerClient;
@@ -423,9 +425,117 @@ public class AppointmentEndpointsTests(PostgresContainerFixture postgres)
 
         var response = await otherClient.GetAsync($"/api/appointments/{appointmentId}");
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Equal("appointment-not-found", body.GetProperty("code").GetString());
+        Assert.False(body.GetProperty("isFullDetail").GetBoolean());
+        Assert.Equal(nameof(AvailabilityStatus.Unterbrechbar), body.GetProperty("status").GetString());
+        Assert.Equal(JsonValueKind.Null, body.GetProperty("title").ValueKind);
+        Assert.Equal(JsonValueKind.Null, body.GetProperty("startUtc").ValueKind);
+        Assert.Equal(JsonValueKind.Null, body.GetProperty("endUtc").ValueKind);
+        Assert.Equal(JsonValueKind.Null, body.GetProperty("attendees").ValueKind);
+    }
+
+    [Fact]
+    public async Task Get_by_id_returns_full_detail_when_the_viewer_is_a_listed_attendee()
+    {
+        // Story 3.1, AC 4 / FR-9 exception: a colleague's appointment is full-detail if the viewer is a
+        // listed attendee, even though they don't own it.
+        var (factory, ownerClient, ownerId) = await CreateAuthenticatedContextAsync();
+        using var f = factory;
+        using var oc = ownerClient;
+
+        var attendeeEmail = $"attendee-{Guid.NewGuid():N}@test.local";
+        var createAttendee = await ownerClient.PostAsJsonAsync("/api/admin/persons", new
+        {
+            email = attendeeEmail,
+            password = "Member#12345",
+            role = "Member",
+        });
+        createAttendee.EnsureSuccessStatusCode();
+        var attendeeId = (await createAttendee.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+
+        var start = new DateTimeOffset(2026, 7, 6, 9, 0, 0, TimeSpan.Zero);
+        var createResponse = await ownerClient.PostAsJsonAsync("/api/appointments", new
+        {
+            title = "Owner's meeting with attendee",
+            startUtc = start,
+            endUtc = start.AddMinutes(30),
+            attendeePersonIds = new[] { attendeeId },
+        });
+        createResponse.EnsureSuccessStatusCode();
+        var appointmentId = (await createResponse.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+
+        using var attendeeClient = factory.CreateHttpsClient();
+        var attendeeLogin = await attendeeClient.PostAsJsonAsync("/api/auth/login", new { email = attendeeEmail, password = "Member#12345" });
+        attendeeLogin.EnsureSuccessStatusCode();
+
+        var response = await attendeeClient.GetAsync($"/api/appointments/{appointmentId}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(body.GetProperty("isFullDetail").GetBoolean());
+        Assert.Equal("Owner's meeting with attendee", body.GetProperty("title").GetString());
+    }
+
+    [Fact]
+    public async Task Get_colleagues_returns_one_slot_list_per_requested_person_never_a_title()
+    {
+        var (factory, ownerClient, ownerId) = await CreateAuthenticatedContextAsync();
+        using var f = factory;
+        using var oc = ownerClient;
+
+        var withAppointmentsEmail = $"busy-{Guid.NewGuid():N}@test.local";
+        var createWithAppointments = await ownerClient.PostAsJsonAsync("/api/admin/persons", new
+        {
+            email = withAppointmentsEmail,
+            password = "Member#12345",
+            role = "Member",
+        });
+        createWithAppointments.EnsureSuccessStatusCode();
+        var withAppointmentsId = (await createWithAppointments.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+
+        var emptyEmail = $"empty-{Guid.NewGuid():N}@test.local";
+        var createEmpty = await ownerClient.PostAsJsonAsync("/api/admin/persons", new
+        {
+            email = emptyEmail,
+            password = "Member#12345",
+            role = "Member",
+        });
+        createEmpty.EnsureSuccessStatusCode();
+        var emptyId = (await createEmpty.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+
+        var day = new DateTimeOffset(2026, 7, 6, 0, 0, 0, TimeSpan.Zero);
+        await SeedAppointmentAsync(factory, withAppointmentsId, "Colleague's secret plan", day.AddHours(9), day.AddHours(10));
+
+        var response = await ownerClient.GetFromJsonAsync<JsonElement>(
+            $"/api/appointments/colleagues?personIds={withAppointmentsId}&personIds={emptyId}"
+            + $"&from={Uri.EscapeDataString(day.ToString("O"))}&to={Uri.EscapeDataString(day.AddDays(1).ToString("O"))}");
+
+        var withAppointmentsSlots = response.GetProperty(withAppointmentsId.ToString()).EnumerateArray().ToArray();
+        Assert.Single(withAppointmentsSlots);
+        Assert.Equal(nameof(AvailabilityStatus.Unterbrechbar), withAppointmentsSlots[0].GetProperty("status").GetString());
+        Assert.False(withAppointmentsSlots[0].TryGetProperty("title", out _));
+
+        var emptySlots = response.GetProperty(emptyId.ToString()).EnumerateArray().ToArray();
+        Assert.Empty(emptySlots);
+    }
+
+    [Fact]
+    public async Task Get_colleagues_rejects_a_range_where_from_is_after_to()
+    {
+        var (factory, client, _) = await CreateAuthenticatedContextAsync();
+        using var f = factory;
+        using var c = client;
+
+        var from = new DateTimeOffset(2026, 7, 10, 0, 0, 0, TimeSpan.Zero);
+        var to = new DateTimeOffset(2026, 7, 1, 0, 0, 0, TimeSpan.Zero);
+
+        var response = await client.GetAsync(
+            $"/api/appointments/colleagues?personIds={Guid.NewGuid()}&from={Uri.EscapeDataString(from.ToString("O"))}&to={Uri.EscapeDataString(to.ToString("O"))}");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("invalid-request", body.GetProperty("code").GetString());
     }
 
     [Fact]

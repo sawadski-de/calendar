@@ -41,6 +41,13 @@
         </button>
       </div>
       <app-view-switcher [active]="viewType()" (activeChange)="setViewType($event)" />
+      <div class="calendar-toolbar__person-selector">
+        <app-person-selector
+          [roster]="roster()"
+          [selectedPersonIds]="selectedPersonIds()"
+          (selectedPersonIdsChange)="onSelectionChanged($event)"
+        />
+      </div>
       <button type="button" class="calendar-toolbar__create" (click)="openCreateBlank()">
         {{ 'calendar.createButton' | transloco }}
       </button>
@@ -62,6 +69,9 @@
           <app-month-view
             [focusDate]="focusDate()"
             [appointments]="appointments()"
+            [roster]="roster()"
+            [selectedPersonIds]="selectedPersonIds()"
+            [colleagueAppointments]="colleagueAppointments()"
             (appointmentActivated)="openDetail($event)"
           />
         }
@@ -74,12 +84,22 @@
             </div>
             <div class="calendar-grid__columns">
               @for (day of weekDays(); track day.getTime()) {
-                <app-calendar-column
-                  [date]="day"
-                  [appointments]="appointmentsFor(day)"
-                  (slotActivated)="openCreateFromSlot($event)"
-                  (appointmentActivated)="openDetail($event)"
-                />
+                @for (owner of columnOwners(); track owner.personId ?? 'own') {
+                  <div class="calendar-column-wrap">
+                    @if (columnOwners().length > 1) {
+                      <span class="calendar-column-wrap__label text-caption">
+                        {{ owner.personId === null ? ('calendar.ownColumnLabel' | transloco) : owner.label }}
+                      </span>
+                    }
+                    <app-calendar-column
+                      [mode]="owner.personId === null ? 'own' : 'colleague'"
+                      [date]="day"
+                      [appointments]="appointmentsForOwner(owner.personId, day)"
+                      (slotActivated)="openCreateFromSlot($event)"
+                      (appointmentActivated)="openDetail($event)"
+                    />
+                  </div>
+                }
               }
             </div>
           </div>
@@ -92,12 +112,22 @@
               }
             </div>
             <div class="calendar-grid__columns">
-              <app-calendar-column
-                [date]="dayDate()"
-                [appointments]="appointmentsFor(dayDate())"
-                (slotActivated)="openCreateFromSlot($event)"
-                (appointmentActivated)="openDetail($event)"
-              />
+              @for (owner of columnOwners(); track owner.personId ?? 'own') {
+                <div class="calendar-column-wrap">
+                  @if (columnOwners().length > 1) {
+                    <span class="calendar-column-wrap__label text-caption">
+                      {{ owner.personId === null ? ('calendar.ownColumnLabel' | transloco) : owner.label }}
+                    </span>
+                  }
+                  <app-calendar-column
+                    [mode]="owner.personId === null ? 'own' : 'colleague'"
+                    [date]="dayDate()"
+                    [appointments]="appointmentsForOwner(owner.personId, dayDate())"
+                    (slotActivated)="openCreateFromSlot($event)"
+                    (appointmentActivated)="openDetail($event)"
+                  />
+                </div>
+              }
             </div>
           </div>
         }

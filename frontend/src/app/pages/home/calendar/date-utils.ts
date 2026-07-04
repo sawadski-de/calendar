@@ -1,5 +1,3 @@
-import { Appointment } from './appointment.model';
-
 /** Monday-start week (German convention) containing `date`, at local midnight. */
 export function startOfWeek(date: Date): Date {
   const result = startOfDay(date);
@@ -59,13 +57,14 @@ export function formatTime(date: Date): string {
   return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 }
 
-/** Groups appointments by the local calendar day their startUtc falls on. */
-export function groupByDay(appointments: Appointment[]): Map<string, Appointment[]> {
-  const map = new Map<string, Appointment[]>();
-  for (const appointment of appointments) {
-    const key = dateKey(new Date(appointment.startUtc));
+/** Groups items by the local calendar day their startUtc falls on — generic over anything with a
+ *  startUtc timestamp (own `Appointment[]` or a colleague's `ColleagueAppointmentSlot[]`, Story 3.1). */
+export function groupByDay<T extends { startUtc: string }>(items: T[]): Map<string, T[]> {
+  const map = new Map<string, T[]>();
+  for (const item of items) {
+    const key = dateKey(new Date(item.startUtc));
     const list = map.get(key) ?? [];
-    list.push(appointment);
+    list.push(item);
     map.set(key, list);
   }
   return map;

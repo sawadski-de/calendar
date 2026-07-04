@@ -1,7 +1,5 @@
-import { Appointment } from './appointment.model';
-
-export interface OverlapLayoutItem {
-  appointment: Appointment;
+export interface OverlapLayoutItem<T> {
+  appointment: T;
   columnIndex: number;
   columnCount: number;
 }
@@ -12,14 +10,18 @@ export interface OverlapLayoutItem {
  * a running group-end time) and greedily assigns each a column — the first column whose previous
  * occupant has already ended, or a new column if none is free. Pure and side-effect-free so it can
  * be unit-tested directly instead of only through rendered DOM/CSS assertions.
+ *
+ * Generic over anything with start/end timestamps — the algorithm only ever reads those two fields, so
+ * both own `Appointment[]` and a colleague's `ColleagueAppointmentSlot[]` (Story 3.1) share this one
+ * implementation rather than a second copy of the layout logic.
  */
-export function computeOverlapLayout(appointments: Appointment[]): OverlapLayoutItem[] {
+export function computeOverlapLayout<T extends { startUtc: string; endUtc: string }>(appointments: T[]): OverlapLayoutItem<T>[] {
   const sorted = [...appointments].sort(
     (a, b) => new Date(a.startUtc).getTime() - new Date(b.startUtc).getTime()
   );
 
-  const result: OverlapLayoutItem[] = [];
-  let group: Appointment[] = [];
+  const result: OverlapLayoutItem<T>[] = [];
+  let group: T[] = [];
   let groupEndMs = Number.NEGATIVE_INFINITY;
 
   const flushGroup = () => {
@@ -28,7 +30,7 @@ export function computeOverlapLayout(appointments: Appointment[]): OverlapLayout
     }
 
     const columnEndsMs: number[] = [];
-    const assignments: { appointment: Appointment; columnIndex: number }[] = [];
+    const assignments: { appointment: T; columnIndex: number }[] = [];
 
     for (const appointment of group) {
       const startMs = new Date(appointment.startUtc).getTime();

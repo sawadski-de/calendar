@@ -1,6 +1,10 @@
 <div class="month-view">
   @for (cell of cells(); track cell.date.getTime()) {
-    <div class="month-view__cell" [class.month-view__cell--outside]="!cell.isCurrentMonth">
+    <div
+      class="month-view__cell"
+      [class.month-view__cell--outside]="!cell.isCurrentMonth"
+      [class.month-view__cell--expanded]="isPopoverCell(cell.date)"
+    >
       <span class="month-view__day-number text-caption">{{ cell.dayNumber }}</span>
       @for (appointment of cell.appointments.slice(0, maxTitlesPerCell); track appointment.id) {
         <span
@@ -11,6 +15,32 @@
       }
       @if (cell.appointments.length > maxTitlesPerCell) {
         <span class="month-view__more text-caption">+{{ cell.appointments.length - maxTitlesPerCell }}</span>
+      }
+      @if (cell.hasDndAggregate) {
+        <span
+          class="month-view__aggregate-marker text-caption"
+          appActivatable
+          (activate)="openPopover(cell.date)"
+          [attr.aria-label]="'calendar.monthAggregateMarker' | transloco: { count: cell.dndCount }"
+        >
+          {{ 'calendar.monthAggregateMarker' | transloco: { count: cell.dndCount } }}
+        </span>
+      }
+
+      @if (isPopoverCell(cell.date)) {
+        <div class="month-view__popover-backdrop" (click)="closePopover()"></div>
+        <div class="month-view__popover" appFocusTrap (click)="$event.stopPropagation()" (keydown.escape)="closePopover()">
+          <span class="month-view__popover-title text-label-caps">{{ cell.dayNumber }}</span>
+          <ul class="month-view__popover-list">
+            @for (entry of popoverStatuses(); track entry.personId) {
+              <li class="month-view__popover-row">
+                <app-status-badge [status]="entry.status" />
+                <span class="text-body">{{ entry.email }}</span>
+              </li>
+            }
+          </ul>
+          <p class="month-view__popover-hint text-caption">{{ 'calendar.detailPrivacyNote' | transloco }}</p>
+        </div>
       }
     </div>
   }

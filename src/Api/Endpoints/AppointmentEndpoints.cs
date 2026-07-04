@@ -37,12 +37,19 @@ public static class AppointmentEndpoints
             CancellationToken cancellationToken) =>
         {
             var personId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
-            var appointment = await appointmentViewService.GetOwnAppointmentByIdAsync(personId, id, cancellationToken);
-            if (appointment is null)
+            var result = await appointmentViewService.GetForViewerByIdAsync(personId, id, cancellationToken);
+            if (result is null)
             {
                 return ProblemResults.Problem(StatusCodes.Status404NotFound, "appointment-not-found", "Appointment not found.");
             }
 
+            if (!result.IsFullDetail)
+            {
+                // FR-9 status-only default: the requester is neither owner nor a listed attendee.
+                return Results.Ok(new AppointmentDetailResponse(result.Id, false, null, null, null, result.Status, null));
+            }
+
+            var appointment = result.FullAppointment!;
             var internalAttendeeIds = appointment.Attendees
                 .Where(a => a.PersonId.HasValue)
                 .Select(a => a.PersonId!.Value)
@@ -58,7 +65,31 @@ public static class AppointmentEndpoints
                 .ToList();
 
             var response = new AppointmentDetailResponse(
-                appointment.Id, appointment.Title, appointment.StartUtc, appointment.EndUtc, appointment.Status, attendees);
+                appointment.Id, true, appointment.Title, appointment.StartUtc, appointment.EndUtc, appointment.Status, attendees);
+            return Results.Ok(response);
+        }).RequireAuthorization();
+
+        app.MapGet("/api/appointments/colleagues", async (
+            Guid[] personIds,
+            DateTimeOffset from,
+            DateTimeOffset to,
+            IAppointmentViewService appointmentViewService,
+            CancellationToken cancellationToken) =>
+        {
+            if (from > to)
+            {
+                return ProblemResults.Problem(StatusCodes.Status400BadRequest, "invalid-request", "'from' must not be after 'to'.");
+            }
+
+            var distinctIds = personIds.Distinct().ToList();
+            var slotsByPerson = await appointmentViewService.GetForViewersAsync(distinctIds, from, to, cancellationToken);
+
+            var response = distinctIds.ToDictionary(
+                id => id,
+                id => (IReadOnlyList<ColleagueAppointmentSlotResponse>)(slotsByPerson.TryGetValue(id, out var slots)
+                    ? slots.Select(s => new ColleagueAppointmentSlotResponse(s.Id, s.StartUtc, s.EndUtc, s.Status)).ToList()
+                    : []));
+
             return Results.Ok(response);
         }).RequireAuthorization();
 

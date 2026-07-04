@@ -48,7 +48,16 @@
     "detailFieldStatus": "Status",
     "detailFieldAttendees": "Teilnehmer",
     "detailNoAttendees": "Keine Teilnehmer",
-    "detailLoadError": "Termin konnte nicht geladen werden."
+    "detailLoadError": "Termin konnte nicht geladen werden.",
+    "detailPrivateTitle": "Privat / beschäftigt",
+    "detailPrivacyNote": "Details sind privat — nur der Status ist sichtbar.",
+    "colleagueSlotLabel": "Termin, Status: {{status}}",
+    "ownColumnLabel": "Ich",
+    "personSelectorAddLabel": "Teammitglied hinzufügen",
+    "personSelectorSearchPlaceholder": "Teammitglied suchen …",
+    "personSelectorRemoveLabel": "{{email}} entfernen",
+    "personSelectorEmptyHint": "Wähle Teammitglieder, um ihre Verfügbarkeit zu sehen.",
+    "monthAggregateMarker": "{{count}} Bitte nicht stören"
   },
   "languageSwitcher": {
     "groupLabel": "Sprache",

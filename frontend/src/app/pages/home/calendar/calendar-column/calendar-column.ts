@@ -1,7 +1,8 @@
 import { Component, computed, input, output } from '@angular/core';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { Activatable } from '../../../../shared/activatable/activatable';
 import { StatusBadge } from '../status-badge/status-badge';
-import { Appointment } from '../appointment.model';
+import { CalendarSlot } from '../appointment.model';
 import { addDays, formatTime, startOfDay } from '../date-utils';
 import { computeOverlapLayout, OverlapLayoutItem } from '../overlap-layout';
 
@@ -10,7 +11,7 @@ const MINUTES_PER_SLOT = 30;
 const SLOT_COUNT = (24 * 60) / MINUTES_PER_SLOT;
 
 interface PositionedAppointment {
-  layout: OverlapLayoutItem;
+  layout: OverlapLayoutItem<CalendarSlot>;
   topPercent: number;
   heightPercent: number;
   leftPercent: number;
@@ -29,13 +30,16 @@ interface TimeSlot {
 @Component({
   selector: 'app-calendar-column',
   standalone: true,
-  imports: [StatusBadge, Activatable],
+  imports: [StatusBadge, Activatable, TranslocoPipe],
   templateUrl: './calendar-column.html',
   styleUrl: './calendar-column.css',
 })
 export class CalendarColumn {
   readonly date = input.required<Date>();
-  readonly appointments = input<Appointment[]>([]);
+  readonly appointments = input<CalendarSlot[]>([]);
+  /** 'own' (default) renders full title+time blocks and an empty-slot create affordance;
+   *  'colleague' renders status-only blocks with no create affordance (Story 3.1, AC 3). */
+  readonly mode = input<'own' | 'colleague'>('own');
   readonly slotActivated = output<Date>();
   readonly appointmentActivated = output<string>();
 

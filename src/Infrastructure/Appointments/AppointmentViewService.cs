@@ -21,11 +21,43 @@ public class AppointmentViewService(ApplicationDbContext dbContext) : IAppointme
             .ToListAsync(cancellationToken);
     }
 
-    public Task<Appointment?> GetOwnAppointmentByIdAsync(
-        Guid personId,
+    public async Task<AppointmentViewResult?> GetForViewerByIdAsync(
+        Guid viewerId,
         Guid appointmentId,
-        CancellationToken cancellationToken = default) =>
-        dbContext.Appointments
+        CancellationToken cancellationToken = default)
+    {
+        var appointment = await dbContext.Appointments
             .Include(a => a.Attendees)
-            .FirstOrDefaultAsync(a => a.Id == appointmentId && a.PersonId == personId, cancellationToken);
+            .FirstOrDefaultAsync(a => a.Id == appointmentId, cancellationToken);
+
+        if (appointment is null)
+        {
+            return null;
+        }
+
+        var isFullDetail = appointment.PersonId == viewerId || appointment.Attendees.Any(a => a.PersonId == viewerId);
+        return new AppointmentViewResult(appointment.Id, isFullDetail, isFullDetail ? appointment : null, appointment.Status);
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<ViewerAppointmentSlot>>> GetForViewersAsync(
+        IReadOnlyList<Guid> personIds,
+        DateTimeOffset rangeStartUtc,
+        DateTimeOffset rangeEndUtc,
+        CancellationToken cancellationToken = default)
+    {
+        if (personIds.Count == 0)
+        {
+            return new Dictionary<Guid, IReadOnlyList<ViewerAppointmentSlot>>();
+        }
+
+        var slots = await dbContext.Appointments
+            .Where(a => personIds.Contains(a.PersonId) && a.StartUtc < rangeEndUtc && a.EndUtc > rangeStartUtc)
+            .OrderBy(a => a.StartUtc)
+            .Select(a => new ViewerAppointmentSlot(a.PersonId, a.Id, a.StartUtc, a.EndUtc, a.Status))
+            .ToListAsync(cancellationToken);
+
+        return slots
+            .GroupBy(s => s.PersonId)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<ViewerAppointmentSlot>)g.ToList());
+    }
 }

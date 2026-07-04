@@ -5,6 +5,7 @@
 }
 
 .month-view__cell {
+  position: relative;
   background: var(--color-surface);
   border-radius: var(--radius-md);
   padding: var(--space-2);
@@ -12,6 +13,10 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.month-view__cell--expanded {
+  z-index: 16;
 }
 
 .month-view__cell:hover {
@@ -36,5 +41,70 @@
 }
 
 .month-view__more {
+  color: var(--color-muted);
+}
+
+.month-view__aggregate-marker {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-dnd-text);
+  cursor: pointer;
+  width: fit-content;
+}
+
+.month-view__aggregate-marker::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-dnd);
+  flex-shrink: 0;
+}
+
+.month-view__popover-backdrop {
+  position: fixed;
+  inset: 0;
+  background: transparent;
+  z-index: 15;
+}
+
+.month-view__popover {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 16;
+  width: 264px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-float);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.month-view__popover-title {
+  color: var(--color-muted);
+}
+
+.month-view__popover-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.month-view__popover-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text);
+}
+
+.month-view__popover-hint {
   color: var(--color-muted);
 }

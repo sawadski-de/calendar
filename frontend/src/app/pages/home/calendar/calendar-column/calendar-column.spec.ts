@@ -134,4 +134,44 @@ describe('CalendarColumn', () => {
       expect(appointmentEmitCount).toBe(0);
     });
   });
+
+  describe('colleague mode (Story 3.1, AC 3, AC 12)', () => {
+    const slot: Appointment = {
+      id: 'appt-1',
+      title: 'Should never render',
+      startUtc: new Date(2026, 6, 6, 9, 0).toISOString(),
+      endUtc: new Date(2026, 6, 6, 9, 30).toISOString(),
+      status: 'BitteNichtStoeren',
+    };
+
+    it('renders no title and no empty-slot create affordance', () => {
+      fixture.componentRef.setInput('mode', 'colleague');
+      fixture.componentRef.setInput('appointments', [slot]);
+      fixture.detectChanges();
+
+      const el = fixture.nativeElement as HTMLElement;
+      expect(el.textContent).not.toContain('Should never render');
+      expect(el.querySelector('.calendar-column__title')).toBeNull();
+      expect(el.querySelectorAll('.calendar-column__slot').length).toBe(0);
+      expect(el.querySelector('app-status-badge')).not.toBeNull();
+    });
+
+    it('sets an aria-label naming only the status, never the title', () => {
+      fixture.componentRef.setInput('mode', 'colleague');
+      fixture.componentRef.setInput('appointments', [slot]);
+      fixture.detectChanges();
+
+      const block = fixture.nativeElement.querySelector('.calendar-column__appointment') as HTMLElement;
+      const label = block.getAttribute('aria-label') ?? '';
+      expect(label.length).toBeGreaterThan(0);
+      expect(label).not.toContain('Should never render');
+    });
+
+    it('own mode (default) still shows the empty-slot create affordance', () => {
+      fixture.componentRef.setInput('appointments', []);
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelectorAll('.calendar-column__slot').length).toBeGreaterThan(0);
+    });
+  });
 });

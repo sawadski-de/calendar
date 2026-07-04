@@ -1,0 +1,65 @@
+<div class="person-selector">
+  <div class="person-selector__chips">
+    @for (person of selectedPeople(); track person.id) {
+      <span class="person-selector__chip">
+        <span class="person-selector__avatar" aria-hidden="true">{{ person.email.charAt(0).toUpperCase() }}</span>
+        <span class="person-selector__chip-label text-caption">{{ person.email }}</span>
+        <button
+          type="button"
+          class="person-selector__chip-remove"
+          (click)="removePerson(person.id)"
+          [attr.aria-label]="'calendar.personSelectorRemoveLabel' | transloco: { email: person.email }"
+        >
+          ×
+        </button>
+      </span>
+    }
+
+    <button
+      type="button"
+      class="person-selector__add"
+      [class.person-selector__add--active]="dropdownOpen()"
+      (click)="dropdownOpen() ? closeDropdown() : openDropdown()"
+      [attr.aria-label]="'calendar.personSelectorAddLabel' | transloco"
+      [attr.aria-expanded]="dropdownOpen()"
+    >
+      +
+    </button>
+
+    @if (selectedPeople().length === 0 && !dropdownOpen()) {
+      <span class="person-selector__hint text-caption">{{ 'calendar.personSelectorEmptyHint' | transloco }}</span>
+    }
+  </div>
+
+  @if (dropdownOpen()) {
+    <div class="person-selector__dropdown" appFocusTrap (keydown.escape)="closeDropdown()">
+      <input
+        #searchInput
+        type="text"
+        class="person-selector__search"
+        [placeholder]="'calendar.personSelectorSearchPlaceholder' | transloco"
+        [value]="filterText()"
+        (input)="onFilterChange($any($event.target).value)"
+        (keydown.arrowdown)="$event.preventDefault(); moveFocus(1)"
+        (keydown.arrowup)="$event.preventDefault(); moveFocus(-1)"
+        (keydown.enter)="addFocused()"
+        autocomplete="off"
+      />
+      <ul class="person-selector__results">
+        @for (person of filteredAvailable(); track person.id; let i = $index) {
+          <li>
+            <div
+              class="person-selector__result"
+              [class.person-selector__result--focused]="i === focusedIndex()"
+              appActivatable
+              (activate)="addPerson(person.id)"
+            >
+              <span class="person-selector__avatar" aria-hidden="true">{{ person.email.charAt(0).toUpperCase() }}</span>
+              {{ person.email }}
+            </div>
+          </li>
+        }
+      </ul>
+    </div>
+  }
+</div>

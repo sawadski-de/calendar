@@ -6,10 +6,14 @@ import { formatTime } from '../date-utils';
 import { StatusBadge } from '../status-badge/status-badge';
 
 /**
- * Read-only detail popover for an own appointment (Story 1.4). Shares the exact popover shape/
- * behavior as `appointment-create` (backdrop + `appFocusTrap` panel) — reuses `shared/focus-trap` and
- * `status-badge`, both built in Story 1.3 specifically so this story wouldn't need to rebuild them.
- * No location field: `Appointment` has no location property at all (FR-15 not built).
+ * Read-only appointment detail popover (Story 1.4), extended in Story 3.1 with a second content mode:
+ * `detail().isFullDetail` decides between full detail (own appointment, or a colleague's where the
+ * viewer is a listed attendee, FR-9) and status-only + privacy note (every other colleague appointment)
+ * — the server decides which fields are populated, this component just renders what it's given.
+ * Shares the exact popover shape/behavior as `appointment-create` (backdrop + `appFocusTrap` panel) —
+ * reuses `shared/focus-trap` and `status-badge`, both built in Story 1.3 specifically so this story
+ * wouldn't need to rebuild them. No location field: `Appointment` has no location property at all
+ * (FR-15 not built).
  */
 @Component({
   selector: 'app-appointment-detail',
@@ -29,7 +33,7 @@ export class AppointmentDetailPopover implements OnInit {
 
   readonly dateLabel = computed(() => {
     const detail = this.detail();
-    if (!detail) {
+    if (!detail?.startUtc) {
       return '';
     }
     return new Date(detail.startUtc).toLocaleDateString(undefined, {
@@ -42,7 +46,7 @@ export class AppointmentDetailPopover implements OnInit {
 
   readonly timeRangeLabel = computed(() => {
     const detail = this.detail();
-    if (!detail) {
+    if (!detail?.startUtc || !detail.endUtc) {
       return '';
     }
     return `${formatTime(new Date(detail.startUtc))}–${formatTime(new Date(detail.endUtc))}`;
