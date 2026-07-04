@@ -80,7 +80,8 @@
         "oauth_error": "Verbindung fehlgeschlagen — bitte erneut versuchen.",
         "code_exchange_failed": "Verbindung fehlgeschlagen — bitte erneut versuchen.",
         "token_refresh_failed": "Synchronisierung fehlgeschlagen — bitte Verbindung erneut herstellen.",
-        "provider_error": "Synchronisierung derzeit nicht möglich — wird automatisch erneut versucht."
+        "provider_error": "Synchronisierung derzeit nicht möglich — wird automatisch erneut versucht.",
+        "unknown_error": "Synchronisierung fehlgeschlagen — wird automatisch erneut versucht."
       }
     }
   },

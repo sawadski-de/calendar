@@ -31,7 +31,7 @@ public class MicrosoftOAuthClient(HttpClient httpClient, IOptions<MicrosoftOAuth
         return $"{AuthorizationEndpoint}?{query}";
     }
 
-    public Task<GoogleTokenResult> ExchangeCodeAsync(string code, CancellationToken cancellationToken = default) =>
+    public Task<OAuthTokenResult> ExchangeCodeAsync(string code, CancellationToken cancellationToken = default) =>
         OAuthTokenHttpClient.PostTokenRequestAsync(
             httpClient,
             TokenEndpoint,
@@ -49,7 +49,7 @@ public class MicrosoftOAuthClient(HttpClient httpClient, IOptions<MicrosoftOAuth
             timeProvider,
             cancellationToken);
 
-    public Task<GoogleTokenResult> RefreshAsync(string refreshToken, CancellationToken cancellationToken = default) =>
+    public Task<OAuthTokenResult> RefreshAsync(string refreshToken, CancellationToken cancellationToken = default) =>
         OAuthTokenHttpClient.PostTokenRequestAsync(
             httpClient,
             TokenEndpoint,

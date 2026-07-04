@@ -3,8 +3,6 @@ using Microsoft.Extensions.Options;
 
 namespace Infrastructure.Sync;
 
-public record GoogleTokenResult(string AccessToken, string? RefreshToken, DateTimeOffset ExpiresAtUtc);
-
 /// <summary>
 /// Thin wrapper over Google's OAuth 2.0 token endpoint — plain <see cref="HttpClient"/>/REST rather
 /// than the <c>Google.Apis.*</c> SDK, since this story needs exactly two calls (code exchange, token
@@ -37,7 +35,7 @@ public class GoogleOAuthClient(HttpClient httpClient, IOptions<GoogleOAuthOption
         return $"{AuthorizationEndpoint}?{query}";
     }
 
-    public Task<GoogleTokenResult> ExchangeCodeAsync(string code, CancellationToken cancellationToken = default) =>
+    public Task<OAuthTokenResult> ExchangeCodeAsync(string code, CancellationToken cancellationToken = default) =>
         OAuthTokenHttpClient.PostTokenRequestAsync(
             httpClient,
             TokenEndpoint,
@@ -54,7 +52,7 @@ public class GoogleOAuthClient(HttpClient httpClient, IOptions<GoogleOAuthOption
             timeProvider,
             cancellationToken);
 
-    public Task<GoogleTokenResult> RefreshAsync(string refreshToken, CancellationToken cancellationToken = default) =>
+    public Task<OAuthTokenResult> RefreshAsync(string refreshToken, CancellationToken cancellationToken = default) =>
         OAuthTokenHttpClient.PostTokenRequestAsync(
             httpClient,
             TokenEndpoint,

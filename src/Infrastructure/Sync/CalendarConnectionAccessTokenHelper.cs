@@ -12,7 +12,7 @@ internal static class CalendarConnectionAccessTokenHelper
 {
     public static async Task<string> GetValidAccessTokenAsync(
         CalendarConnection connection,
-        Func<string, CancellationToken, Task<GoogleTokenResult>> refreshAsync,
+        Func<string, CancellationToken, Task<OAuthTokenResult>> refreshAsync,
         ITokenEncryption tokenEncryption,
         ICalendarConnectionRepository calendarConnectionRepository,
         TimeProvider timeProvider,

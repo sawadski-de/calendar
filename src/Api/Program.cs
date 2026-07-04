@@ -56,7 +56,8 @@ builder.Services
         options.User.RequireUniqueEmail = true;
     })
     .AddEntityFrameworkStores<ApplicationDbContext>()
-    .AddSignInManager();
+    .AddSignInManager()
+    .AddClaimsPrincipalFactory<ApplicationUserClaimsPrincipalFactory>();
 
 // AddIdentityCore() does not register an authentication scheme by itself — wire the cookie up
 // explicitly (AD-10: HttpOnly/Secure/SameSite=Lax, no bearer token ever reaches client JS).

@@ -73,12 +73,13 @@ public static class CalendarConnectionEndpoints
 
             // Removes every appointment this connection ever imported — otherwise they'd sit stale
             // forever once the Worker stops polling a disconnected connection (AD-7's "removed on
-            // missing key" delete path never gets a chance to run again for these rows).
+            // missing key" delete path never gets a chance to run again for these rows). Disconnecting
+            // the connection and deleting its appointments happen as one atomic write (code review
+            // finding) — see DisconnectAndRemoveAppointmentsAsync's doc comment for why.
             var existing = await appointmentRepository.GetSyncedAppointmentsAsync(personId, normalizedProvider, cancellationToken);
-            await appointmentRepository.ApplySyncResultAsync([], existing.Values.Select(a => a.Id).ToList(), cancellationToken);
-
             connection.Disconnect();
-            await calendarConnectionRepository.UpsertAsync(connection, cancellationToken);
+            await calendarConnectionRepository.DisconnectAndRemoveAppointmentsAsync(
+                connection, existing.Values.Select(a => a.Id).ToList(), cancellationToken);
             return Results.NoContent();
         });
 
@@ -172,7 +173,7 @@ public static class CalendarConnectionEndpoints
         string? state,
         string? error,
         Guid personId,
-        Func<string, CancellationToken, Task<GoogleTokenResult>> exchangeCodeAsync,
+        Func<string, CancellationToken, Task<OAuthTokenResult>> exchangeCodeAsync,
         Func<string, string> mapProviderError,
         ITokenEncryption tokenEncryption,
         ICalendarConnectionRepository calendarConnectionRepository,

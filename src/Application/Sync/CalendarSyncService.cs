@@ -32,6 +32,24 @@ public class CalendarSyncService(
     {
         var now = timeProvider.GetUtcNow();
 
+        // Re-fetch fresh rather than trust the caller's (possibly cycle-stale) instance — code review
+        // finding: the Worker loads its connection list once per cycle and hands each entry into its
+        // own scope's SyncAsync call; if a user disconnects (DELETE /api/calendar-connections/{provider})
+        // while that connection's sync is already in flight, the in-flight sync would otherwise finish
+        // with the pre-disconnect tokens still in memory, re-insert the just-deleted appointments, and
+        // blindly overwrite the connection back to "connected" via UpsertAsync's full-entity Update().
+        // Re-fetching here narrows that race to the (much smaller) window between this fetch and the
+        // final UpsertAsync below, and lets a mid-flight disconnect win outright if it lands first.
+        var freshConnection = await calendarConnectionRepository.GetAsync(connection.PersonId, connection.Provider, cancellationToken);
+        if (freshConnection is null || !freshConnection.IsConnected)
+        {
+            // Disconnected (or never connected) since the Worker's cycle started — nothing to sync,
+            // and definitely nothing to report as a failure.
+            return SyncOutcome.Succeeded;
+        }
+
+        connection = freshConnection;
+
         // The whole cycle — fetch AND diff/persist — is one failure domain (code review finding: the
         // original version only caught exceptions around the fetch call and only CalendarProviderException,
         // so a DB error during ApplySyncResultAsync or a token-decryption failure during fetch propagated

@@ -54,9 +54,10 @@ public class Appointment
     public void AddAttendee(Guid personId) => _attendees.Add(new Attendee(Guid.NewGuid(), Id, personId));
 
     /// <summary>
-    /// Attaches a participant carried over from a synced provider event (Story 2.1) — synced
-    /// attendees are always stored as external, even if the email happens to match a team member's;
-    /// resolving synced participants back to a <see cref="Person"/> is out of this story's scope.
+    /// Attaches a participant carried over from a synced provider event (Story 2.1) whose email could
+    /// not be matched to a team member — the sync service tries the roster first (via
+    /// <see cref="AddAttendee"/>) and only falls back to this external-attendee path when no match is
+    /// found.
     /// </summary>
     public void AddExternalAttendee(string email, string? displayName) =>
         _attendees.Add(Attendee.External(Guid.NewGuid(), Id, email, displayName));

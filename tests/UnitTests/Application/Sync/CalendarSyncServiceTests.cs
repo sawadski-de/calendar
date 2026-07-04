@@ -9,12 +9,25 @@ public class CalendarSyncServiceTests
 {
     private static readonly DateTimeOffset Now = new(2026, 7, 4, 10, 0, 0, TimeSpan.Zero);
 
+    /// <summary>Creates a connected <see cref="CalendarConnection"/> and seeds it into
+    /// <paramref name="connectionRepository"/> — SyncAsync re-fetches the connection via the repository
+    /// at the top of the method (code review fix: never trust the caller's possibly-stale instance), so
+    /// every test needs the connection to actually be findable there, not just passed as a parameter.</summary>
+    private static CalendarConnection SeedConnectedConnection(
+        FakeCalendarConnectionRepository connectionRepository, Guid personId, string provider = "Google")
+    {
+        var connection = new CalendarConnection(Guid.NewGuid(), personId, provider);
+        connection.MarkConnected("enc-access", "enc-refresh", Now.AddHours(1), Now);
+        connectionRepository.Seed(connection);
+        return connection;
+    }
+
     [Fact]
     public async Task SyncAsync_inserts_a_new_event_with_the_computed_status()
     {
-        var connection = new CalendarConnection(Guid.NewGuid(), Guid.NewGuid(), "Google");
         var appointmentRepository = new FakeAppointmentRepository();
         var connectionRepository = new FakeCalendarConnectionRepository();
+        var connection = SeedConnectedConnection(connectionRepository, Guid.NewGuid());
         var evt = new ExternalCalendarEvent("evt-1", "Standup", Now, Now.AddMinutes(15), false, null, []);
         var provider = FakeCalendarProvider.Returning(evt);
         var sut = new CalendarSyncService(new FakeCalendarProviderResolver(provider), appointmentRepository, connectionRepository, new FakePersonRepository(), new FixedTimeProvider(Now));
@@ -32,9 +45,9 @@ public class CalendarSyncServiceTests
     public async Task SyncAsync_replaces_a_changed_event_without_creating_a_duplicate()
     {
         var personId = Guid.NewGuid();
-        var connection = new CalendarConnection(Guid.NewGuid(), personId, "Google");
         var appointmentRepository = new FakeAppointmentRepository();
         var connectionRepository = new FakeCalendarConnectionRepository();
+        var connection = SeedConnectedConnection(connectionRepository, personId);
 
         var original = new Appointment(Guid.NewGuid(), personId, "Standup", Now, Now.AddMinutes(15), "Google", "evt-1");
         original.AssignStatus(AvailabilityStatus.Unterbrechbar);
@@ -57,9 +70,9 @@ public class CalendarSyncServiceTests
     public async Task SyncAsync_leaves_an_unchanged_event_untouched()
     {
         var personId = Guid.NewGuid();
-        var connection = new CalendarConnection(Guid.NewGuid(), personId, "Google");
         var appointmentRepository = new FakeAppointmentRepository();
         var connectionRepository = new FakeCalendarConnectionRepository();
+        var connection = SeedConnectedConnection(connectionRepository, personId);
 
         var original = new Appointment(Guid.NewGuid(), personId, "Standup", Now, Now.AddMinutes(15), "Google", "evt-1");
         original.AssignStatus(AvailabilityStatus.Unterbrechbar);
@@ -79,9 +92,9 @@ public class CalendarSyncServiceTests
     public async Task SyncAsync_deletes_an_appointment_whose_key_is_missing_from_the_latest_snapshot()
     {
         var personId = Guid.NewGuid();
-        var connection = new CalendarConnection(Guid.NewGuid(), personId, "Google");
         var appointmentRepository = new FakeAppointmentRepository();
         var connectionRepository = new FakeCalendarConnectionRepository();
+        var connection = SeedConnectedConnection(connectionRepository, personId);
 
         var cancelled = new Appointment(Guid.NewGuid(), personId, "Cancelled meeting", Now, Now.AddMinutes(30), "Google", "evt-cancelled");
         cancelled.AssignStatus(AvailabilityStatus.Unterbrechbar);
@@ -99,9 +112,9 @@ public class CalendarSyncServiceTests
     public async Task SyncAsync_records_a_failure_on_the_connection_when_the_provider_throws_and_does_not_touch_appointments()
     {
         var personId = Guid.NewGuid();
-        var connection = new CalendarConnection(Guid.NewGuid(), personId, "Google");
         var appointmentRepository = new FakeAppointmentRepository();
         var connectionRepository = new FakeCalendarConnectionRepository();
+        var connection = SeedConnectedConnection(connectionRepository, personId);
 
         var existing = new Appointment(Guid.NewGuid(), personId, "Standup", Now, Now.AddMinutes(15), "Google", "evt-1");
         existing.AssignStatus(AvailabilityStatus.Unterbrechbar);
@@ -115,6 +128,7 @@ public class CalendarSyncServiceTests
         Assert.Equal(SyncOutcome.Failed, outcome);
         Assert.Equal("token_refresh_failed", connection.LastErrorCode);
         Assert.Equal(1, connection.ConsecutiveFailureCount);
+        // One upsert from seeding is not counted (Seed bypasses UpsertAsync) — only the failure-path upsert.
         Assert.Equal(1, connectionRepository.UpsertCallCount);
         // A failed fetch must never touch previously-synced appointments — the diff never runs.
         Assert.Single(appointmentRepository.All);
@@ -123,9 +137,9 @@ public class CalendarSyncServiceTests
     [Fact]
     public async Task SyncAsync_persists_the_connection_status_after_a_successful_cycle()
     {
-        var connection = new CalendarConnection(Guid.NewGuid(), Guid.NewGuid(), "Google");
         var appointmentRepository = new FakeAppointmentRepository();
         var connectionRepository = new FakeCalendarConnectionRepository();
+        var connection = SeedConnectedConnection(connectionRepository, Guid.NewGuid());
         var provider = FakeCalendarProvider.Returning();
         var sut = new CalendarSyncService(new FakeCalendarProviderResolver(provider), appointmentRepository, connectionRepository, new FakePersonRepository(), new FixedTimeProvider(Now));
 
@@ -142,9 +156,9 @@ public class CalendarSyncServiceTests
         // Code review regression: originally only CalendarProviderException was caught around the
         // fetch call — a token-decryption failure or any other unexpected exception propagated
         // uncaught, so the connection's error state was never updated.
-        var connection = new CalendarConnection(Guid.NewGuid(), Guid.NewGuid(), "Google");
         var appointmentRepository = new FakeAppointmentRepository();
         var connectionRepository = new FakeCalendarConnectionRepository();
+        var connection = SeedConnectedConnection(connectionRepository, Guid.NewGuid());
         var provider = FakeCalendarProvider.FailingWith(new InvalidOperationException("token decrypt blew up"));
         var sut = new CalendarSyncService(new FakeCalendarProviderResolver(provider), appointmentRepository, connectionRepository, new FakePersonRepository(), new FixedTimeProvider(Now));
 
@@ -162,9 +176,9 @@ public class CalendarSyncServiceTests
         // RecordSyncSuccess/UpsertAsync) ran outside any try/catch — a DB error there propagated
         // uncaught even though the provider fetch itself succeeded.
         var personId = Guid.NewGuid();
-        var connection = new CalendarConnection(Guid.NewGuid(), personId, "Google");
         var appointmentRepository = new FakeAppointmentRepository { ThrowOnApplySyncResult = new TimeoutException("db unreachable") };
         var connectionRepository = new FakeCalendarConnectionRepository();
+        var connection = SeedConnectedConnection(connectionRepository, personId);
         var evt = new ExternalCalendarEvent("evt-1", "Standup", Now, Now.AddMinutes(15), false, null, []);
         var provider = FakeCalendarProvider.Returning(evt);
         var sut = new CalendarSyncService(new FakeCalendarProviderResolver(provider), appointmentRepository, connectionRepository, new FakePersonRepository(), new FixedTimeProvider(Now));
@@ -179,9 +193,9 @@ public class CalendarSyncServiceTests
     [Fact]
     public async Task SyncAsync_does_not_record_a_failure_when_cancelled()
     {
-        var connection = new CalendarConnection(Guid.NewGuid(), Guid.NewGuid(), "Google");
         var appointmentRepository = new FakeAppointmentRepository();
         var connectionRepository = new FakeCalendarConnectionRepository();
+        var connection = SeedConnectedConnection(connectionRepository, Guid.NewGuid());
         using var cts = new CancellationTokenSource();
         var provider = FakeCalendarProvider.FailingWith(new OperationCanceledException(cts.Token));
         var sut = new CalendarSyncService(new FakeCalendarProviderResolver(provider), appointmentRepository, connectionRepository, new FakePersonRepository(), new FixedTimeProvider(Now));
@@ -200,9 +214,9 @@ public class CalendarSyncServiceTests
         // Code review regression: ordinal (case-sensitive) email comparison treated a provider-side
         // casing normalization as a real change, needlessly deleting and recreating the appointment.
         var personId = Guid.NewGuid();
-        var connection = new CalendarConnection(Guid.NewGuid(), personId, "Google");
         var appointmentRepository = new FakeAppointmentRepository();
         var connectionRepository = new FakeCalendarConnectionRepository();
+        var connection = SeedConnectedConnection(connectionRepository, personId);
 
         var original = new Appointment(Guid.NewGuid(), personId, "Standup", Now, Now.AddMinutes(15), "Google", "evt-1");
         original.AddExternalAttendee("Jonas@Example.com", "Jonas");
@@ -226,9 +240,9 @@ public class CalendarSyncServiceTests
         // Code review regression: HasChanged only diffed attendee emails — a provider-side display-name
         // update (email unchanged) was silently dropped and never persisted.
         var personId = Guid.NewGuid();
-        var connection = new CalendarConnection(Guid.NewGuid(), personId, "Google");
         var appointmentRepository = new FakeAppointmentRepository();
         var connectionRepository = new FakeCalendarConnectionRepository();
+        var connection = SeedConnectedConnection(connectionRepository, personId);
 
         var original = new Appointment(Guid.NewGuid(), personId, "Standup", Now, Now.AddMinutes(15), "Google", "evt-1");
         original.AddExternalAttendee("jonas@example.com", "Jonas Old Name");
@@ -251,9 +265,9 @@ public class CalendarSyncServiceTests
     public async Task SyncAsync_attaches_an_attendee_as_a_real_teammate_when_the_email_matches_the_roster()
     {
         var personId = Guid.NewGuid();
-        var connection = new CalendarConnection(Guid.NewGuid(), personId, "Google");
         var appointmentRepository = new FakeAppointmentRepository();
         var connectionRepository = new FakeCalendarConnectionRepository();
+        var connection = SeedConnectedConnection(connectionRepository, personId);
         var teammate = new Person(Guid.NewGuid(), "jonas@example.com", PersonRole.Member);
         var personRepository = new FakePersonRepository(teammate);
 
@@ -277,9 +291,9 @@ public class CalendarSyncServiceTests
         // A team member is added after the appointment was first synced as external — the next sync
         // must upgrade the stored attendee to a real Person reference, not leave it external forever.
         var personId = Guid.NewGuid();
-        var connection = new CalendarConnection(Guid.NewGuid(), personId, "Google");
         var appointmentRepository = new FakeAppointmentRepository();
         var connectionRepository = new FakeCalendarConnectionRepository();
+        var connection = SeedConnectedConnection(connectionRepository, personId);
 
         var original = new Appointment(Guid.NewGuid(), personId, "Standup", Now, Now.AddMinutes(15), "Google", "evt-1");
         original.AddExternalAttendee("jonas@example.com", "Jonas");
@@ -299,5 +313,43 @@ public class CalendarSyncServiceTests
         var attendee = Assert.Single(stored.Attendees);
         Assert.Equal(teammate.Id, attendee.PersonId);
         Assert.NotEqual(original.Id, stored.Id);
+    }
+
+    [Fact]
+    public async Task SyncAsync_does_nothing_and_succeeds_when_the_connection_was_disconnected_since_the_cycle_started()
+    {
+        // Code review regression: the Worker loads its connection list once per cycle, in a scope
+        // that's since been disposed, then hands that (now possibly-stale) instance into this method.
+        // If a user disconnects while that connection's sync is already in flight, SyncAsync must
+        // notice the fresh (disconnected) state — read via the repository, a genuinely separate object
+        // graph representing what's actually in the DB right now — rather than blindly finishing the
+        // sync with the caller's stale in-memory tokens and overwriting the disconnect back to
+        // "connected".
+        var personId = Guid.NewGuid();
+        var connectionId = Guid.NewGuid();
+        var appointmentRepository = new FakeAppointmentRepository();
+        var connectionRepository = new FakeCalendarConnectionRepository();
+
+        // The Worker's in-memory reference — still looks connected, exactly as it did when the cycle
+        // started reading the connection list.
+        var staleConnection = new CalendarConnection(connectionId, personId, "Google");
+        staleConnection.MarkConnected("enc-access", "enc-refresh", Now.AddHours(1), Now);
+
+        // What the repository actually holds by the time SyncAsync runs — a separate instance (same
+        // Id, different object) that has since been disconnected via the Api endpoint.
+        var disconnectedState = new CalendarConnection(connectionId, personId, "Google");
+        disconnectedState.MarkConnected("enc-access", "enc-refresh", Now.AddHours(1), Now);
+        disconnectedState.Disconnect();
+        connectionRepository.Seed(disconnectedState);
+
+        var evt = new ExternalCalendarEvent("evt-1", "Standup", Now, Now.AddMinutes(15), false, null, []);
+        var provider = FakeCalendarProvider.Returning(evt);
+        var sut = new CalendarSyncService(new FakeCalendarProviderResolver(provider), appointmentRepository, connectionRepository, new FakePersonRepository(), new FixedTimeProvider(Now));
+
+        var outcome = await sut.SyncAsync(staleConnection, new SyncWindow(Now.AddDays(-1), Now.AddDays(1)));
+
+        Assert.Equal(SyncOutcome.Succeeded, outcome);
+        Assert.Empty(appointmentRepository.All);
+        Assert.False(disconnectedState.IsConnected);
     }
 }

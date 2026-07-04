@@ -116,6 +116,26 @@ describe('Connections', () => {
     expect(fixture.nativeElement.textContent).toContain('Verbindung abgelehnt');
   });
 
+  it('shows a translated message (not a raw i18n key) for the unknown_error code (code review regression)', () => {
+    createComponent();
+    fixture.detectChanges();
+    httpMock.expectOne('/api/calendar-connections').flush([
+      {
+        provider: 'Google',
+        connected: true,
+        lastSuccessfulSyncAt: new Date(Date.now() - 60 * 60_000).toISOString(),
+        hasError: true,
+        errorCode: 'unknown_error',
+      },
+      notConnected[1],
+    ]);
+    fixture.detectChanges();
+
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.textContent).not.toContain('settings.connections.error.unknown_error');
+    expect(el.textContent).toContain('Synchronisierung fehlgeschlagen');
+  });
+
   it('shows a "Verbinden" link pointing at the Outlook OAuth authorize endpoint when Outlook is not connected (Story 2.2)', () => {
     createComponent();
     fixture.detectChanges();

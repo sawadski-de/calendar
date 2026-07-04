@@ -41,4 +41,32 @@ public class CalendarConnectionRepository(ApplicationDbContext dbContext) : ICal
 
         await dbContext.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task DisconnectAndRemoveAppointmentsAsync(
+        CalendarConnection connection,
+        IReadOnlyList<Guid> appointmentIdsToDelete,
+        CancellationToken cancellationToken = default)
+    {
+        // Same transactional pattern as AppointmentRepository.ApplySyncResultAsync (Story 2.1 review
+        // fix) — CreateExecutionStrategy is required because EnableRetryOnFailure() is configured on
+        // this DbContext, and an explicit transaction needs the same retry-aware wrapping.
+        var strategy = dbContext.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
+        {
+            dbContext.ChangeTracker.Clear();
+            await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+            if (appointmentIdsToDelete.Count > 0)
+            {
+                await dbContext.Appointments
+                    .Where(a => appointmentIdsToDelete.Contains(a.Id))
+                    .ExecuteDeleteAsync(cancellationToken);
+            }
+
+            dbContext.CalendarConnections.Update(connection);
+            await dbContext.SaveChangesAsync(cancellationToken);
+
+            await transaction.CommitAsync(cancellationToken);
+        });
+    }
 }

@@ -80,7 +80,8 @@
         "oauth_error": "Connection failed — please try again.",
         "code_exchange_failed": "Connection failed — please try again.",
         "token_refresh_failed": "Sync failed — please reconnect your account.",
-        "provider_error": "Sync isn't working right now — it will retry automatically."
+        "provider_error": "Sync isn't working right now — it will retry automatically.",
+        "unknown_error": "Sync failed — it will retry automatically."
       }
     }
   },

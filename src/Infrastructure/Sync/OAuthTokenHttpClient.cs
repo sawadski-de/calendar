@@ -12,7 +12,7 @@ namespace Infrastructure.Sync;
 /// </summary>
 internal static class OAuthTokenHttpClient
 {
-    public static async Task<GoogleTokenResult> PostTokenRequestAsync(
+    public static async Task<OAuthTokenResult> PostTokenRequestAsync(
         HttpClient httpClient,
         string tokenEndpoint,
         Dictionary<string, string> form,
@@ -34,7 +34,7 @@ internal static class OAuthTokenHttpClient
         }
 
         var expiresAtUtc = timeProvider.GetUtcNow().AddSeconds(payload.ExpiresIn);
-        return new GoogleTokenResult(payload.AccessToken, payload.RefreshToken, expiresAtUtc);
+        return new OAuthTokenResult(payload.AccessToken, payload.RefreshToken, expiresAtUtc);
     }
 
     private class TokenPayload

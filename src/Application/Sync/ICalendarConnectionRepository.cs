@@ -31,4 +31,17 @@ public interface ICalendarConnectionRepository
     Task<IReadOnlyList<CalendarConnection>> GetAllAsync(CancellationToken cancellationToken = default);
 
     Task UpsertAsync(CalendarConnection connection, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// User-initiated "Verbindung trennen" — clears the connection's tokens/state
+    /// (<see cref="CalendarConnection.Disconnect"/>) and removes every appointment
+    /// <paramref name="appointmentIdsToDelete"/> names, atomically. Deliberately one call, not
+    /// "delete appointments then <see cref="UpsertAsync"/>" as two separate writes — a crash between
+    /// the two would leave <see cref="CalendarConnection.IsConnected"/> reading true for an account
+    /// whose imported data was already wiped (code review finding).
+    /// </summary>
+    Task DisconnectAndRemoveAppointmentsAsync(
+        CalendarConnection connection,
+        IReadOnlyList<Guid> appointmentIdsToDelete,
+        CancellationToken cancellationToken = default);
 }
