@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { vi } from 'vitest';
 import { getTranslocoTestingModule } from '../../../testing/transloco-testing';
 import { CalendarConnectionStatus } from './connection.model';
 import { Connections } from './connections';
@@ -154,5 +155,55 @@ describe('Connections', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('Outlook-Kalender erfolgreich verbunden.');
+  });
+
+  it('shows a "Verbindung trennen" button for a connected account, not for an unconnected one', () => {
+    createComponent();
+    fixture.detectChanges();
+    httpMock.expectOne('/api/calendar-connections').flush([
+      { provider: 'Google', connected: true, lastSuccessfulSyncAt: null, hasError: false, errorCode: null },
+      notConnected[1],
+    ]);
+    fixture.detectChanges();
+
+    const disconnectButtons = fixture.nativeElement.querySelectorAll('.ghost-btn--danger');
+    expect(disconnectButtons.length).toBe(1);
+  });
+
+  it('disconnects and reloads the connection list after confirming', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    createComponent();
+    fixture.detectChanges();
+    httpMock.expectOne('/api/calendar-connections').flush([
+      { provider: 'Google', connected: true, lastSuccessfulSyncAt: null, hasError: false, errorCode: null },
+      notConnected[1],
+    ]);
+    fixture.detectChanges();
+
+    (fixture.nativeElement.querySelector('.ghost-btn--danger') as HTMLButtonElement).click();
+
+    httpMock.expectOne({ url: '/api/calendar-connections/google', method: 'DELETE' }).flush(null);
+    fixture.detectChanges();
+    httpMock.expectOne('/api/calendar-connections').flush(notConnected);
+    fixture.detectChanges();
+
+    expect(window.confirm).toHaveBeenCalled();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelectorAll('.ghost-btn--danger').length).toBe(0);
+  });
+
+  it('does not call the API when the disconnect confirmation is cancelled', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    createComponent();
+    fixture.detectChanges();
+    httpMock.expectOne('/api/calendar-connections').flush([
+      { provider: 'Google', connected: true, lastSuccessfulSyncAt: null, hasError: false, errorCode: null },
+      notConnected[1],
+    ]);
+    fixture.detectChanges();
+
+    (fixture.nativeElement.querySelector('.ghost-btn--danger') as HTMLButtonElement).click();
+
+    httpMock.expectNone({ url: '/api/calendar-connections/google', method: 'DELETE' });
   });
 });

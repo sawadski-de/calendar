@@ -1,6 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { TranslocoPipe } from '@jsverse/transloco';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { minutesSince } from '../../../shared/sync-time';
 import { CalendarConnectionStatus, CalendarProviderId } from './connection.model';
 import { ConnectionsService } from './connections.service';
@@ -27,10 +27,12 @@ export class Connections implements OnInit {
   private readonly connectionsService = inject(ConnectionsService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly transloco = inject(TranslocoService);
 
   readonly connections = signal<CalendarConnectionStatus[]>([]);
   readonly loading = signal(true);
   readonly callbackNotice = signal<{ kind: 'connected' | 'error'; provider?: string; errorCode?: string } | null>(null);
+  readonly disconnectingProvider = signal<CalendarProviderId | null>(null);
 
   ngOnInit(): void {
     this.consumeCallbackQueryParams();
@@ -47,6 +49,26 @@ export class Connections implements OnInit {
 
   syncLineParams(connection: CalendarConnectionStatus): { minutes: number } {
     return { minutes: minutesSince(connection.lastSuccessfulSyncAt) };
+  }
+
+  disconnect(provider: CalendarProviderId): void {
+    // A native confirm() rather than a custom modal — disconnecting also deletes every appointment
+    // this connection ever imported (Api: CalendarConnectionEndpoints "/{provider}" DELETE), which is
+    // destructive enough to warrant an explicit "are you sure", and this app has no modal component
+    // built yet that this one-off action would justify creating.
+    const message = this.transloco.translate('settings.connections.disconnectConfirm', { provider: this.displayName(provider) });
+    if (!window.confirm(message)) {
+      return;
+    }
+
+    this.disconnectingProvider.set(provider);
+    this.connectionsService.disconnect(provider).subscribe({
+      next: () => {
+        this.disconnectingProvider.set(null);
+        this.loadConnections();
+      },
+      error: () => this.disconnectingProvider.set(null),
+    });
   }
 
   private loadConnections(): void {

@@ -66,6 +66,8 @@
       "statusError": "Connection error",
       "connect": "Connect",
       "retry": "Retry",
+      "disconnect": "Disconnect",
+      "disconnectConfirm": "Disconnect {{provider}}? All appointments imported from it will be removed.",
       "connectedNotice": "{{provider}} Calendar connected successfully.",
       "lastSync": "Last synced {{minutes}} min ago.",
       "neverSynced": "No successful sync yet",

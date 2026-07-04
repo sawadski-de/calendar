@@ -102,4 +102,20 @@ public class CalendarConnection
         ConsecutiveFailureCount++;
         LastErrorCode = errorCode;
     }
+
+    /// <summary>
+    /// User-initiated "Verbindung trennen". Resets to the same clean slate as a never-attempted
+    /// connection — a later reconnect goes through <see cref="MarkConnected"/> exactly like the first
+    /// time, with no leftover error/failure state from before the disconnect.
+    /// </summary>
+    public void Disconnect()
+    {
+        EncryptedAccessToken = null;
+        EncryptedRefreshToken = null;
+        AccessTokenExpiresUtc = null;
+        LastSuccessfulSyncAt = null;
+        LastAttemptAt = null;
+        ConsecutiveFailureCount = 0;
+        LastErrorCode = null;
+    }
 }

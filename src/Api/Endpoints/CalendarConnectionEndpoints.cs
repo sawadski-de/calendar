@@ -1,5 +1,7 @@
 using System.Security.Claims;
 using Api.Contracts;
+using Api.Errors;
+using Application.Appointments;
 using Application.Sync;
 using Domain;
 using Infrastructure.Sync;
@@ -45,6 +47,39 @@ public static class CalendarConnectionEndpoints
                     : new CalendarConnectionResponse(provider, false, null, false, null));
 
             return Results.Ok(response);
+        });
+
+        group.MapDelete("/{provider}", async (
+            string provider,
+            ClaimsPrincipal user,
+            ICalendarConnectionRepository calendarConnectionRepository,
+            IAppointmentRepository appointmentRepository,
+            CancellationToken cancellationToken) =>
+        {
+            var normalizedProvider = CalendarProviders.All.FirstOrDefault(p => p.Equals(provider, StringComparison.OrdinalIgnoreCase));
+            if (normalizedProvider is null)
+            {
+                return ProblemResults.Problem(StatusCodes.Status400BadRequest, "unknown-provider", "Unknown calendar provider.");
+            }
+
+            var personId = GetPersonId(user);
+            var connection = await calendarConnectionRepository.GetAsync(personId, normalizedProvider, cancellationToken);
+            if (connection is null || !connection.IsConnected)
+            {
+                // Nothing to disconnect — idempotent, not an error (a double-click or a stale page
+                // reload must not surface as a failure).
+                return Results.NoContent();
+            }
+
+            // Removes every appointment this connection ever imported — otherwise they'd sit stale
+            // forever once the Worker stops polling a disconnected connection (AD-7's "removed on
+            // missing key" delete path never gets a chance to run again for these rows).
+            var existing = await appointmentRepository.GetSyncedAppointmentsAsync(personId, normalizedProvider, cancellationToken);
+            await appointmentRepository.ApplySyncResultAsync([], existing.Values.Select(a => a.Id).ToList(), cancellationToken);
+
+            connection.Disconnect();
+            await calendarConnectionRepository.UpsertAsync(connection, cancellationToken);
+            return Results.NoContent();
         });
 
         group.MapGet("/google/authorize", (

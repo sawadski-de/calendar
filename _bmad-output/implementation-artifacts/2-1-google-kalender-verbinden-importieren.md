@@ -178,6 +178,10 @@ claude-sonnet-5
 
 All fixes verified: 31/31 unit tests, 41/41 integration tests (including the transaction-fix regression path via the existing sync-diff tests), 76/76 frontend tests, full solution + `ng build` both clean.
 
+### Nachtrag (2026-07-04, nach Durchsprache der offenen Fragen mit Dennis)
+
+Drei Follow-ups aus `epic-2-open-questions.md` umgesetzt: (1) `CalendarSyncService` matcht synchronisierte Teilnehmer jetzt gegen die Personen-Tabelle und verknüpft sie bei Treffer als echtes Teammitglied statt immer extern; (2) ein `DELETE /api/calendar-connections/{provider}`-Endpoint + "Verbindung trennen"-UI-Button wurden ergänzt (entfernt alle importierten Termine dieser Verbindung, native Termine bleiben unberührt); (3) `deploy/oauth-setup.md` als Schritt-für-Schritt-Anleitung für die Google-/Microsoft-App-Registrierungen erstellt. Alle drei mit neuen Tests abgedeckt (39 Unit-/51 Integrationstests/89 Frontend-Tests, alle grün).
+
 ### Completion Notes List
 
 - All 12 tasks complete; all 12 ACs implemented and covered by tests.

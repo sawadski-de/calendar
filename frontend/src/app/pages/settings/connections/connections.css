@@ -128,3 +128,13 @@
   border-color: var(--color-accent);
   color: var(--color-accent-text);
 }
+
+.ghost-btn--danger {
+  border-color: var(--color-dnd);
+  color: var(--color-dnd-text);
+}
+
+.ghost-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

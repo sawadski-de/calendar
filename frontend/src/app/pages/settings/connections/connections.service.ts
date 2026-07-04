@@ -18,4 +18,8 @@ export class ConnectionsService {
   authorizeUrl(provider: CalendarProviderId): string {
     return `/api/calendar-connections/${provider.toLowerCase()}/authorize`;
   }
+
+  disconnect(provider: CalendarProviderId): Observable<void> {
+    return this.http.delete<void>(`/api/calendar-connections/${provider.toLowerCase()}`);
+  }
 }

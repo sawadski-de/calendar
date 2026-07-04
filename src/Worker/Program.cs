@@ -1,5 +1,7 @@
+using Application.Accounts;
 using Application.Appointments;
 using Application.Sync;
+using Infrastructure.Accounts;
 using Infrastructure.Appointments;
 using Infrastructure.Persistence;
 using Infrastructure.Sync;
@@ -52,6 +54,7 @@ builder.Services.AddScoped<ICalendarProviderResolver>(sp => new CalendarProvider
 
 builder.Services.AddScoped<ICalendarConnectionRepository, CalendarConnectionRepository>();
 builder.Services.AddScoped<IAppointmentRepository, AppointmentRepository>();
+builder.Services.AddScoped<IPersonRepository, PersonRepository>();
 builder.Services.AddScoped<CalendarSyncService>();
 
 builder.Services.AddHostedService<SyncBackgroundService>();

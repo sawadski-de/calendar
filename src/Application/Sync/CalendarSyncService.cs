@@ -1,3 +1,4 @@
+using Application.Accounts;
 using Application.Appointments;
 using Domain;
 
@@ -21,6 +22,7 @@ public class CalendarSyncService(
     ICalendarProviderResolver calendarProviderResolver,
     IAppointmentRepository appointmentRepository,
     ICalendarConnectionRepository calendarConnectionRepository,
+    IPersonRepository personRepository,
     TimeProvider timeProvider)
 {
     public async Task<SyncOutcome> SyncAsync(
@@ -43,6 +45,12 @@ public class CalendarSyncService(
             var existingByProviderEventId = await appointmentRepository.GetSyncedAppointmentsAsync(
                 connection.PersonId, connection.Provider, cancellationToken);
 
+            // A synced attendee whose email matches a team member's is attached as that Person (not
+            // stored as external) — so Epic 3's Mehrpersonen-Ansicht recognizes them as a real
+            // teammate rather than an opaque external label. Fetched once per cycle, not per event.
+            var roster = await personRepository.GetAllAsync(cancellationToken);
+            var rosterByEmail = roster.ToDictionary(p => p.Email.ToUpperInvariant(), p => p);
+
             var toInsert = new List<Appointment>();
             var toDelete = new List<Guid>();
             var seenProviderEventIds = new HashSet<string>();
@@ -52,7 +60,7 @@ public class CalendarSyncService(
                 seenProviderEventIds.Add(evt.ProviderEventId);
                 existingByProviderEventId.TryGetValue(evt.ProviderEventId, out var current);
 
-                if (current is not null && !HasChanged(current, evt))
+                if (current is not null && !HasChanged(current, evt, rosterByEmail))
                 {
                     continue;
                 }
@@ -77,7 +85,7 @@ public class CalendarSyncService(
 
                 foreach (var attendee in evt.Attendees)
                 {
-                    appointment.AddExternalAttendee(attendee.Email, attendee.DisplayName);
+                    AttachAttendee(appointment, attendee, rosterByEmail);
                 }
 
                 appointment.AssignStatus(StatusHeuristicService.Compute(appointment));
@@ -116,7 +124,7 @@ public class CalendarSyncService(
         }
     }
 
-    private static bool HasChanged(Appointment current, ExternalCalendarEvent evt)
+    private static bool HasChanged(Appointment current, ExternalCalendarEvent evt, IReadOnlyDictionary<string, Person> rosterByEmail)
     {
         if (current.Title != evt.Title
             || current.StartUtc != evt.StartUtc
@@ -127,18 +135,41 @@ public class CalendarSyncService(
             return true;
         }
 
-        // Compare both email (case-insensitive — a provider normalizing casing between syncs must not
-        // look like a "changed" attendee) and display name (code review finding: the original version
-        // only diffed emails, so a provider-side display-name update — email unchanged — was silently
-        // dropped and never persisted).
-        var currentAttendees = current.Attendees
-            .Select(a => ((a.ExternalEmail ?? string.Empty).ToUpperInvariant(), a.ExternalDisplayName))
-            .OrderBy(a => a.Item1, StringComparer.Ordinal);
-        var newAttendees = evt.Attendees
-            .Select(a => (a.Email.ToUpperInvariant(), a.DisplayName))
-            .OrderBy(a => a.Item1, StringComparer.Ordinal);
-        return !currentAttendees.SequenceEqual(newAttendees);
+        // Same resolution AttachAttendee uses (roster-matched → Person key, else email+displayName
+        // key) — this is what makes a team member joining the roster between syncs (an attendee that
+        // used to be external now matches) correctly look like a change, without a separate codepath.
+        var currentKeys = current.Attendees.Select(AttendeeKey).OrderBy(k => k, StringComparer.Ordinal);
+        var newKeys = evt.Attendees.Select(a => ResolveAttendeeKey(a, rosterByEmail)).OrderBy(k => k, StringComparer.Ordinal);
+        return !currentKeys.SequenceEqual(newKeys);
     }
+
+    /// <summary>
+    /// Attaches a synced event's attendee as a real team member (<see cref="Appointment.AddAttendee"/>)
+    /// when their email matches the roster, otherwise as an external participant
+    /// (<see cref="Appointment.AddExternalAttendee"/>) — the one place this decision is made, shared by
+    /// the insert path and <see cref="HasChanged"/>'s diff via <see cref="ResolveAttendeeKey"/>.
+    /// </summary>
+    private static void AttachAttendee(Appointment appointment, ExternalAttendee attendee, IReadOnlyDictionary<string, Person> rosterByEmail)
+    {
+        if (rosterByEmail.TryGetValue(attendee.Email.ToUpperInvariant(), out var person))
+        {
+            appointment.AddAttendee(person.Id);
+        }
+        else
+        {
+            appointment.AddExternalAttendee(attendee.Email, attendee.DisplayName);
+        }
+    }
+
+    private static string AttendeeKey(Attendee attendee) =>
+        attendee.PersonId is { } personId
+            ? $"P:{personId}"
+            : $"E:{(attendee.ExternalEmail ?? string.Empty).ToUpperInvariant()}|{attendee.ExternalDisplayName}";
+
+    private static string ResolveAttendeeKey(ExternalAttendee attendee, IReadOnlyDictionary<string, Person> rosterByEmail) =>
+        rosterByEmail.TryGetValue(attendee.Email.ToUpperInvariant(), out var person)
+            ? $"P:{person.Id}"
+            : $"E:{attendee.Email.ToUpperInvariant()}|{attendee.DisplayName}";
 }
 
 /// <summary>

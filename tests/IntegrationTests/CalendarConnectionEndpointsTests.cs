@@ -292,6 +292,69 @@ public class CalendarConnectionEndpointsTests(PostgresContainerFixture postgres)
         await Assert.ThrowsAnyAsync<DbUpdateException>(() => dbContext.SaveChangesAsync());
     }
 
+    [Fact]
+    public async Task Disconnect_clears_the_connection_and_removes_every_appointment_it_imported()
+    {
+        var (factory, client, personId) = await CreateAuthenticatedContextAsync();
+        using var f = factory;
+        using var c = client;
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var tokenEncryption = scope.ServiceProvider.GetRequiredService<ITokenEncryption>();
+            var now = DateTimeOffset.UtcNow;
+            var connection = new CalendarConnection(Guid.NewGuid(), personId, CalendarProviders.Google);
+            connection.MarkConnected(tokenEncryption.Encrypt("a"), tokenEncryption.Encrypt("r"), now.AddHours(1), now);
+            connection.RecordSyncSuccess(now);
+            dbContext.CalendarConnections.Add(connection);
+            dbContext.Appointments.Add(new Appointment(Guid.NewGuid(), personId, "Imported", now, now.AddMinutes(30), CalendarProviders.Google, "evt-to-remove"));
+            // A native appointment must survive disconnecting a synced calendar — only Provider-tagged
+            // rows for this connection are in scope for removal.
+            dbContext.Appointments.Add(new Appointment(Guid.NewGuid(), personId, "Native", now, now.AddMinutes(30)));
+            await dbContext.SaveChangesAsync();
+        }
+
+        var response = await client.DeleteAsync("/api/calendar-connections/google");
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+
+        var status = (await client.GetFromJsonAsync<JsonElement>("/api/calendar-connections"))
+            .EnumerateArray().First(e => e.GetProperty("provider").GetString() == "Google");
+        Assert.False(status.GetProperty("connected").GetBoolean());
+
+        using var scopeAfterDisconnect = factory.Services.CreateScope();
+        var dbContextAfterDisconnect = scopeAfterDisconnect.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var remaining = await dbContextAfterDisconnect.Appointments.Where(a => a.PersonId == personId).ToListAsync();
+        Assert.Single(remaining);
+        Assert.Equal("Native", remaining[0].Title);
+    }
+
+    [Fact]
+    public async Task Disconnect_is_idempotent_when_there_is_nothing_connected()
+    {
+        var (factory, client, _) = await CreateAuthenticatedContextAsync();
+        using var f = factory;
+        using var c = client;
+
+        var response = await client.DeleteAsync("/api/calendar-connections/google");
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Disconnect_rejects_an_unknown_provider()
+    {
+        var (factory, client, _) = await CreateAuthenticatedContextAsync();
+        using var f = factory;
+        using var c = client;
+
+        var response = await client.DeleteAsync("/api/calendar-connections/yahoo");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("unknown-provider", body.GetProperty("code").GetString());
+    }
+
     private static async Task<string> BuildValidStateAsync(TestApiFactory factory, Guid personId)
     {
         using var scope = factory.Services.CreateScope();

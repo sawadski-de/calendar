@@ -66,6 +66,8 @@
       "statusError": "Verbindungsfehler",
       "connect": "Verbinden",
       "retry": "Erneut versuchen",
+      "disconnect": "Verbindung trennen",
+      "disconnectConfirm": "{{provider}}-Verbindung wirklich trennen? Alle daraus importierten Termine werden entfernt.",
       "connectedNotice": "{{provider}}-Kalender erfolgreich verbunden.",
       "lastSync": "Zuletzt synchronisiert vor {{minutes}} Min.",
       "neverSynced": "Kein erfolgreicher Sync bisher",

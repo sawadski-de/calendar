@@ -57,10 +57,20 @@
             <a class="ghost-btn ghost-btn--primary" [href]="authorizeUrl(connection.provider)">
               {{ 'settings.connections.connect' | transloco }}
             </a>
-          } @else if (connection.hasError) {
-            <a class="ghost-btn ghost-btn--primary" [href]="authorizeUrl(connection.provider)">
-              {{ 'settings.connections.retry' | transloco }}
-            </a>
+          } @else {
+            @if (connection.hasError) {
+              <a class="ghost-btn ghost-btn--primary" [href]="authorizeUrl(connection.provider)">
+                {{ 'settings.connections.retry' | transloco }}
+              </a>
+            }
+            <button
+              type="button"
+              class="ghost-btn ghost-btn--danger"
+              [disabled]="disconnectingProvider() === connection.provider"
+              (click)="disconnect(connection.provider)"
+            >
+              {{ 'settings.connections.disconnect' | transloco }}
+            </button>
           }
         </div>
       </div>
